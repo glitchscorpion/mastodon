@@ -34,9 +34,10 @@ export const STATUS_FETCH_SOURCE_REQUEST = 'STATUS_FETCH_SOURCE_REQUEST';
 export const STATUS_FETCH_SOURCE_SUCCESS = 'STATUS_FETCH_SOURCE_SUCCESS';
 export const STATUS_FETCH_SOURCE_FAIL    = 'STATUS_FETCH_SOURCE_FAIL';
 
-export const QUOTE_REVEAL = 'QUOTE_REVEAL';
-export const QUOTE_HIDE   = 'QUOTE_HIDE';
-export const QUOTE_STATUS_COLLAPSE = 'QUOTE_STATUS_COLLAPSE';
+export const STATUS_TRANSLATE_REQUEST = 'STATUS_TRANSLATE_REQUEST';
+export const STATUS_TRANSLATE_SUCCESS = 'STATUS_TRANSLATE_SUCCESS';
+export const STATUS_TRANSLATE_FAIL    = 'STATUS_TRANSLATE_FAIL';
+export const STATUS_TRANSLATE_UNDO    = 'STATUS_TRANSLATE_UNDO';
 
 export function fetchStatusRequest(id, skipLoading) {
   return {
@@ -102,10 +103,9 @@ export const editStatus = (id, routerHistory) => (dispatch, getState) => {
   dispatch(fetchStatusSourceRequest());
 
   api(getState).get(`/api/v1/statuses/${id}/source`).then(response => {
-    const { text, spoiler_text, content_type, local_only } = response.data;
     dispatch(fetchStatusSourceSuccess());
     ensureComposeIsVisible(getState, routerHistory);
-    dispatch(setComposeToStatus(status, text, spoiler_text, content_type, local_only));
+    dispatch(setComposeToStatus(status, response.data.text, response.data.spoiler_text));
   }).catch(error => {
     dispatch(fetchStatusSourceFail(error));
   });
@@ -314,34 +314,36 @@ export function toggleStatusCollapse(id, isCollapsed) {
     id,
     isCollapsed,
   };
-}
-
-export function toggleQuoteStatusCollapse(id, isCollapsed) {
-  return {
-    type: QUOTE_STATUS_COLLAPSE,
-    id,
-    isCollapsed,
-  };
-}
-
-export function hideQuote(ids) {
-  if (!Array.isArray(ids)) {
-    ids = [ids];
-  }
-
-  return {
-    type: QUOTE_HIDE,
-    ids,
-  };
 };
 
-export function revealQuote(ids) {
-  if (!Array.isArray(ids)) {
-    ids = [ids];
-  }
+export const translateStatus = id => (dispatch, getState) => {
+  dispatch(translateStatusRequest(id));
 
-  return {
-    type: QUOTE_REVEAL,
-    ids,
-  };
+  api(getState).post(`/api/v1/statuses/${id}/translate`).then(response => {
+    dispatch(translateStatusSuccess(id, response.data));
+  }).catch(error => {
+    dispatch(translateStatusFail(id, error));
+  });
 };
+
+export const translateStatusRequest = id => ({
+  type: STATUS_TRANSLATE_REQUEST,
+  id,
+});
+
+export const translateStatusSuccess = (id, translation) => ({
+  type: STATUS_TRANSLATE_SUCCESS,
+  id,
+  translation,
+});
+
+export const translateStatusFail = (id, error) => ({
+  type: STATUS_TRANSLATE_FAIL,
+  id,
+  error,
+});
+
+export const undoStatusTranslation = id => ({
+  type: STATUS_TRANSLATE_UNDO,
+  id,
+});

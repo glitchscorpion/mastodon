@@ -1,4 +1,4 @@
-# frozen_string_literal: truey
+# frozen_string_literal: true
 
 source 'https://rubygems.org'
 ruby '>= 2.6.0', '< 3.1.0'
@@ -38,12 +38,7 @@ group :pam_authentication, optional: true do
 end
 
 gem 'net-ldap', '~> 0.17'
-gem 'omniauth-azure-oauth2', '~> 0.0.9'
 gem 'omniauth-cas', '~> 2.0'
-gem 'omniauth-github', '~> 1.4'
-gem 'omniauth-gitlab', '~> 1.0.2'
-gem 'omniauth-gitee', '~> 1.0.0'
-# gem 'omniauth-gitee', github: 'mashirozx/omniauth-gitee', branch: 'master'
 gem 'omniauth-saml', '~> 1.10'
 gem 'gitlab-omniauth-openid-connect', '~>0.10.0', require: 'omniauth_openid_connect'
 gem 'omniauth', '~> 1.9'
@@ -60,12 +55,9 @@ gem 'redis-namespace', '~> 1.9'
 gem 'htmlentities', '~> 4.3'
 gem 'http', '~> 5.1'
 gem 'http_accept_language', '~> 2.1'
-gem 'httplog', '~> 1.5.0'
+gem 'httplog', '~> 1.6.0'
 gem 'idn-ruby', require: 'idn'
 gem 'kaminari', '~> 1.2'
-gem 'kramdown', '~> 2.4'
-gem 'kramdown-parser-gfm', '~> 1.1'
-gem 'rouge', '~> 3.28'
 gem 'link_header', '~> 0.0'
 gem 'mime-types', '~> 3.4.1', require: 'mime/types/columnar'
 gem 'nokogiri', '~> 1.13'
@@ -80,6 +72,7 @@ gem 'rack-attack', '~> 6.6'
 gem 'rack-cors', '~> 1.1', require: 'rack/cors'
 gem 'rails-i18n', '~> 6.0'
 gem 'rails-settings-cached', '~> 0.6'
+gem 'redcarpet', '~> 3.5'
 gem 'redis', '~> 4.5', require: ['redis', 'redis/connection/hiredis']
 gem 'mario-redis-lock', '~> 1.2', require: 'redis_lock'
 gem 'rqrcode', '~> 2.1'
@@ -90,7 +83,6 @@ gem 'sidekiq', '~> 6.5'
 gem 'sidekiq-scheduler', '~> 4.0'
 gem 'sidekiq-unique-jobs', '~> 7.1'
 gem 'sidekiq-bulk', '~> 0.2.0'
-gem 'sidekiq-prometheus-exporter', '~> 0.1'
 gem 'simple-navigation', '~> 4.4'
 gem 'simple_form', '~> 5.1'
 gem 'sprockets-rails', '~> 3.4', require: 'sprockets/railtie'
@@ -100,7 +92,7 @@ gem 'tty-prompt', '~> 0.23', require: false
 gem 'twitter-text', '~> 3.1.0'
 gem 'tzinfo-data', '~> 1.2022'
 gem 'webpacker', '~> 5.4'
-gem 'webpush', git: 'https://github.com/ClearlyClaire/webpush.git', ref: 'f14a4d52e201128b1b00245d11b6de80d6cfdcd9'
+gem 'webpush', github: 'ClearlyClaire/webpush', ref: 'f14a4d52e201128b1b00245d11b6de80d6cfdcd9'
 gem 'webauthn', '~> 2.5'
 
 gem 'json-ld'
@@ -129,7 +121,8 @@ group :test do
   gem 'rspec-sidekiq', '~> 3.1'
   gem 'simplecov', '~> 0.21', require: false
   gem 'webmock', '~> 3.18'
-  gem 'rspec_junit_formatter', '~> 0.5'
+  gem 'rspec_junit_formatter', '~> 0.6'
+  gem 'rack-test', '~> 2.0'
 end
 
 group :development do
@@ -160,9 +153,7 @@ end
 
 gem 'concurrent-ruby', require: false
 gem 'connection_pool', require: false
-
-gem 'rucaptcha', git: 'https://github.com/huacnlee/rucaptcha', ref: '3e8361a06521c45811d1487cceb41dc524ab9b69', branch: 'main'
-gem "sidekiq-statistic"
 gem 'xorcist', '~> 1.1'
 
+gem 'hcaptcha', '~> 7.1'
 gem 'cocoon', '~> 1.2'

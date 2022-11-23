@@ -4,7 +4,6 @@ import Status from '../components/status';
 import { makeGetStatus, makeGetPictureInPicture } from '../selectors';
 import {
   replyCompose,
-  quoteCompose,
   mentionCompose,
   directCompose,
 } from '../actions/compose';
@@ -26,9 +25,8 @@ import {
   revealStatus,
   toggleStatusCollapse,
   editStatus,
-  hideQuote,
-  revealQuote,
-  toggleQuoteStatusCollapse,
+  translateStatus,
+  undoStatusTranslation,
 } from '../actions/statuses';
 import {
   unmuteAccount,
@@ -58,8 +56,6 @@ const messages = defineMessages({
   redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? Favourites and boosts will be lost, and replies to the original post will be orphaned.' },
   replyConfirm: { id: 'confirmations.reply.confirm', defaultMessage: 'Reply' },
   replyMessage: { id: 'confirmations.reply.message', defaultMessage: 'Replying now will overwrite the message you are currently composing. Are you sure you want to proceed?' },
-  quoteConfirm: { id: 'confirmations.quote.confirm', defaultMessage: 'Quote' },
-  quoteMessage: { id: 'confirmations.quote.message', defaultMessage: 'Quoting now will overwrite the message you are currently composing. Are you sure you want to proceed?' },
   blockDomainConfirm: { id: 'confirmations.domain_block.confirm', defaultMessage: 'Hide entire domain' },
 });
 
@@ -109,22 +105,6 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
     }
   },
 
-  onQuote (status, router) {
-    dispatch((_, getState) => {
-      let state = getState();
-
-      if (state.getIn(['compose', 'text']).trim().length !== 0) {
-        dispatch(openModal('CONFIRM', {
-          message: intl.formatMessage(messages.quoteMessage),
-          confirm: intl.formatMessage(messages.quoteConfirm),
-          onConfirm: () => dispatch(quoteCompose(status, router)),
-        }));
-      } else {
-        dispatch(quoteCompose(status, router));
-      }
-    });
-  },
-
   onFavourite (status) {
     if (status.get('favourited')) {
       dispatch(unfavourite(status));
@@ -170,6 +150,14 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
 
   onEdit (status, history) {
     dispatch(editStatus(status.get('id'), history));
+  },
+
+  onTranslate (status) {
+    if (status.get('translation')) {
+      dispatch(undoStatusTranslation(status.get('id')));
+    } else {
+      dispatch(translateStatus(status.get('id')));
+    }
   },
 
   onDirect (account, router) {
@@ -249,18 +237,12 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
     dispatch(deployPictureInPicture(status.get('id'), status.getIn(['account', 'id']), type, mediaProps));
   },
 
-  onQuoteToggleCollapsed (status, isCollapsed) {
-    // dispatch(toggleStatusCollapse(status.get('id'), isCollapsed));
-    // no difference or should also pass the parent id
-    dispatch(toggleQuoteStatusCollapse(status.get('id'), isCollapsed));
-  },
-
-  onQuoteToggleHidden (status) {
-    if (status.get('quote_hidden')) {
-      dispatch(revealQuote(status.get('id')));
-    } else {
-      dispatch(hideQuote(status.get('id')));
-    }
+  onInteractionModal (type, status) {
+    dispatch(openModal('INTERACTION', {
+      type,
+      accountId: status.getIn(['account', 'id']),
+      url: status.get('url'),
+    }));
   },
 
 });

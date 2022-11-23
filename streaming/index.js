@@ -385,6 +385,7 @@ const startWorker = async (workerId) => {
   const channelNameFromPath = req => {
     const { path, query } = req;
     const onlyMedia = isTruthy(query.only_media);
+    const allowLocalOnly = isTruthy(query.allow_local_only);
 
     switch (path) {
     case '/api/v1/streaming/user':
@@ -614,9 +615,10 @@ const startWorker = async (workerId) => {
    * @param {function(string, string): void} output
    * @param {function(string[], function(string): void): void} attachCloseHandler
    * @param {boolean=} needsFiltering
+   * @param {boolean=} allowLocalOnly
    * @return {function(string): void}
    */
-  const streamFrom = (ids, req, output, attachCloseHandler, needsFiltering = false) => {
+  const streamFrom = (ids, req, output, attachCloseHandler, needsFiltering = false, allowLocalOnly = false) => {
     const accountId = req.accountId || req.remoteAddress;
 
     log.verbose(req.requestId, `Starting stream from ${ids.join(', ')} for ${accountId}`);
@@ -638,7 +640,7 @@ const startWorker = async (workerId) => {
       };
 
       // Only send local-only statuses to logged-in users
-      if (payload.local_only && !req.accountId) {
+      if (event === 'update' && payload.local_only && !(req.accountId && allowLocalOnly)) {
         log.silly(req.requestId, `Message ${payload.id} filtered because it was local-only`);
         return;
       }
@@ -687,8 +689,8 @@ const startWorker = async (workerId) => {
           queries.push(client.query('SELECT 1 FROM account_domain_blocks WHERE account_id = $1 AND domain = $2', [req.accountId, accountDomain]));
         }
 
-        if (!unpackedPayload.filter_results && !req.cachedFilters) {
-          queries.push(client.query('SELECT filter.id AS id, filter.phrase AS title, filter.context AS context, filter.expires_at AS expires_at, filter.action AS filter_action, keyword.keyword AS keyword, keyword.whole_word AS whole_word FROM custom_filter_keywords keyword JOIN custom_filters filter ON keyword.custom_filter_id = filter.id WHERE filter.account_id = $1 AND filter.expires_at IS NULL OR filter.expires_at > NOW()', [req.accountId]));
+        if (!unpackedPayload.filtered && !req.cachedFilters) {
+          queries.push(client.query('SELECT filter.id AS id, filter.phrase AS title, filter.context AS context, filter.expires_at AS expires_at, filter.action AS filter_action, keyword.keyword AS keyword, keyword.whole_word AS whole_word FROM custom_filter_keywords keyword JOIN custom_filters filter ON keyword.custom_filter_id = filter.id WHERE filter.account_id = $1 AND (filter.expires_at IS NULL OR filter.expires_at > NOW())', [req.accountId]));
         }
 
         Promise.all(queries).then(values => {
@@ -698,7 +700,7 @@ const startWorker = async (workerId) => {
             return;
           }
 
-          if (!unpackedPayload.filter_results && !req.cachedFilters) {
+          if (!unpackedPayload.filtered && !req.cachedFilters) {
             const filterRows = values[accountDomain ? 2 : 1].rows;
 
             req.cachedFilters = filterRows.reduce((cache, row) => {
@@ -713,7 +715,7 @@ const startWorker = async (workerId) => {
                     title: row.title,
                     context: row.context,
                     expires_at: row.expires_at,
-                    filter_action: row.filter_action,
+                    filter_action: ['warn', 'hide'][row.filter_action],
                   },
                 };
               }
@@ -741,18 +743,18 @@ const startWorker = async (workerId) => {
           }
 
           // Check filters
-          if (req.cachedFilters && !unpackedPayload.filter_results) {
+          if (req.cachedFilters && !unpackedPayload.filtered) {
             const status = unpackedPayload;
             const searchContent = ([status.spoiler_text || '', status.content].concat((status.poll && status.poll.options) ? status.poll.options.map(option => option.title) : [])).concat(status.media_attachments.map(att => att.description)).join('\n\n').replace(/<br\s*\/?>/g, '\n').replace(/<\/p><p>/g, '\n\n');
             const searchIndex = JSDOM.fragment(searchContent).textContent;
 
             const now = new Date();
-            payload.filter_results = [];
+            payload.filtered = [];
             Object.values(req.cachedFilters).forEach((cachedFilter) => {
               if ((cachedFilter.expires_at === null || cachedFilter.expires_at > now)) {
                 const keyword_matches = searchIndex.match(cachedFilter.regexp);
                 if (keyword_matches) {
-                  payload.filter_results.push({
+                  payload.filtered.push({
                     filter: cachedFilter.repr,
                     keyword_matches,
                   });
@@ -864,7 +866,7 @@ const startWorker = async (workerId) => {
       const onSend = streamToHttp(req, res);
       const onEnd = streamHttpEnd(req, subscriptionHeartbeat(channelIds));
 
-      streamFrom(channelIds, req, onSend, onEnd, options.needsFiltering);
+      streamFrom(channelIds, req, onSend, onEnd, options.needsFiltering, options.allowLocalOnly);
     }).catch(err => {
       log.verbose(req.requestId, 'Subscription error:', err.toString());
       httpNotFound(res);
@@ -937,63 +939,77 @@ const startWorker = async (workerId) => {
     case 'user':
       resolve({
         channelIds: channelsForUserStream(req),
-        options: { needsFiltering: false },
+        options: { needsFiltering: false, allowLocalOnly: true },
       });
 
       break;
     case 'user:notification':
       resolve({
         channelIds: [`timeline:${req.accountId}:notifications`],
-        options: { needsFiltering: false },
+        options: { needsFiltering: false, allowLocalOnly: true },
       });
 
       break;
     case 'public':
       resolve({
         channelIds: ['timeline:public'],
-        options: { needsFiltering: true },
+        options: { needsFiltering: true, allowLocalOnly: isTruthy(params.allow_local_only) },
+      });
+
+      break;
+    case 'public:allow_local_only':
+      resolve({
+        channelIds: ['timeline:public'],
+        options: { needsFiltering: true, allowLocalOnly: true },
       });
 
       break;
     case 'public:local':
       resolve({
         channelIds: ['timeline:public:local'],
-        options: { needsFiltering: true },
+        options: { needsFiltering: true, allowLocalOnly: true },
       });
 
       break;
     case 'public:remote':
       resolve({
         channelIds: ['timeline:public:remote'],
-        options: { needsFiltering: true },
+        options: { needsFiltering: true, allowLocalOnly: false },
       });
 
       break;
     case 'public:media':
       resolve({
         channelIds: ['timeline:public:media'],
-        options: { needsFiltering: true },
+        options: { needsFiltering: true, allowLocalOnly: isTruthy(query.allow_local_only) },
+      });
+
+      break;
+    case 'public:allow_local_only:media':
+      resolve({
+        channelIds: ['timeline:public:media'],
+        options: { needsFiltering: true, allowLocalOnly: true },
       });
 
       break;
     case 'public:local:media':
       resolve({
         channelIds: ['timeline:public:local:media'],
-        options: { needsFiltering: true },
+        options: { needsFiltering: true, allowLocalOnly: true },
       });
 
       break;
     case 'public:remote:media':
       resolve({
         channelIds: ['timeline:public:remote:media'],
-        options: { needsFiltering: true },
+        options: { needsFiltering: true, allowLocalOnly: false },
       });
 
       break;
     case 'direct':
       resolve({
         channelIds: [`timeline:direct:${req.accountId}`],
-        options: { needsFiltering: false },
+        options: { needsFiltering: false, allowLocalOnly: true },
       });
 
       break;
@@ -1003,7 +1019,7 @@ const startWorker = async (workerId) => {
       } else {
         resolve({
           channelIds: [`timeline:hashtag:${normalizeHashtag(params.tag)}`],
-          options: { needsFiltering: true },
+          options: { needsFiltering: true, allowLocalOnly: true },
         });
       }
 
@@ -1014,7 +1030,7 @@ const startWorker = async (workerId) => {
       } else {
         resolve({
           channelIds: [`timeline:hashtag:${normalizeHashtag(params.tag)}:local`],
-          options: { needsFiltering: true },
+          options: { needsFiltering: true, allowLocalOnly: true },
         });
       }
 
@@ -1023,7 +1039,7 @@ const startWorker = async (workerId) => {
       authorizeListAccess(params.list, req).then(() => {
         resolve({
           channelIds: [`timeline:list:${params.list}`],
-          options: { needsFiltering: false },
+          options: { needsFiltering: false, allowLocalOnly: true },
         });
       }).catch(() => {
         reject('Not authorized to stream this list');
@@ -1073,7 +1089,7 @@ const startWorker = async (workerId) => {
 
       const onSend = streamToWs(request, socket, streamNameFromChannelName(channelName, params));
       const stopHeartbeat = subscriptionHeartbeat(channelIds);
-      const listener = streamFrom(channelIds, request, onSend, undefined, options.needsFiltering);
+      const listener = streamFrom(channelIds, request, onSend, undefined, options.needsFiltering, options.allowLocalOnly);
 
       subscriptions[channelIds.join(';')] = {
         listener,

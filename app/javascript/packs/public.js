@@ -1,5 +1,4 @@
 import './public-path';
-import escapeTextContentForBrowser from 'escape-html';
 import loadPolyfills from '../mastodon/load_polyfills';
 import ready from '../mastodon/ready';
 import { start } from '../mastodon/common';
@@ -7,22 +6,6 @@ import loadKeyboardExtensions from '../mastodon/load_keyboard_extensions';
 import 'cocoon-js-vanilla';
 
 start();
-
-window.addEventListener('message', e => {
-  const data = e.data || {};
-
-  if (!window.parent || data.type !== 'setHeight') {
-    return;
-  }
-
-  ready(() => {
-    window.parent.postMessage({
-      type: 'setHeight',
-      id: data.id,
-      height: document.getElementsByTagName('html')[0].scrollHeight,
-    }, '*');
-  });
-});
 
 function main() {
   const IntlMessageFormat = require('intl-messageformat').default;
@@ -33,7 +16,6 @@ function main() {
   const { messages } = getLocale();
   const React = require('react');
   const ReactDOM = require('react-dom');
-  const Rellax = require('rellax');
   const { createBrowserHistory } = require('history');
 
   const scrollToDetailedStatus = () => {
@@ -54,17 +36,6 @@ function main() {
   };
 
   ready(() => {
-    [].forEach.call(document.querySelectorAll('img.rucaptcha-image'), (content) => {
-      content.addEventListener('click', e => {
-        content.src = '/rucaptcha/?t=' + Date.now();
-      });
-    });
-
-    [].forEach.call(document.querySelectorAll('iframe.custom-full-width-iframe'), (content) => {
-      content.width = '100%';
-      content.height = content.offsetWidth * content.getAttribute('data-height') / content.getAttribute('data-width');
-    });
-
     const locale = document.documentElement.lang;
 
     const dateTimeFormat = new Intl.DateTimeFormat(locale, {
@@ -123,12 +94,6 @@ function main() {
       scrollToDetailedStatus();
     }
 
-    const parallaxComponents = document.querySelectorAll('.parallax');
-
-    if (parallaxComponents.length > 0 ) {
-      new Rellax('.parallax', { speed: -1 });
-    }
-
     delegate(document, '#registration_user_password_confirmation,#registration_user_password', 'input', () => {
       const password = document.getElementById('registration_user_password');
       const confirmation = document.getElementById('registration_user_password_confirmation');
@@ -179,139 +144,31 @@ function main() {
     });
   });
 
-  delegate(document, '.webapp-btn', 'click', ({ target, button }) => {
-    if (button !== 0) {
-      return true;
-    }
-    window.location.href = target.href;
-    return false;
-  });
+  const toggleSidebar = () => {
+    const sidebar = document.querySelector('.sidebar ul');
+    const toggleButton = document.querySelector('.sidebar__toggle__icon');
 
-  delegate(document, '.modal-button', 'click', e => {
-    e.preventDefault();
-
-    let href;
-
-    if (e.target.nodeName !== 'A') {
-      href = e.target.parentNode.href;
+    if (sidebar.classList.contains('visible')) {
+      document.body.style.overflow = null;
+      toggleButton.setAttribute('aria-expanded', false);
     } else {
-      href = e.target.href;
+      document.body.style.overflow = 'hidden';
+      toggleButton.setAttribute('aria-expanded', true);
     }
 
-    window.open(href, 'mastodon-intent', 'width=445,height=600,resizable=no,menubar=no,status=no,scrollbars=yes');
-  });
-
-  delegate(document, '#account_display_name', 'input', ({ target }) => {
-    const name = document.querySelector('.card .display-name strong');
-    if (name) {
-      if (target.value) {
-        name.innerHTML = emojify(escapeTextContentForBrowser(target.value));
-      } else {
-        name.textContent = target.dataset.default;
-      }
-    }
-  });
-
-  delegate(document, '#account_avatar', 'change', ({ target }) => {
-    const avatar = document.querySelector('.card .avatar img');
-    const [file] = target.files || [];
-    const url = file ? URL.createObjectURL(file) : avatar.dataset.originalSrc;
-
-    avatar.src = url;
-  });
-
-  const getProfileAvatarAnimationHandler = (swapTo) => {
-    //animate avatar gifs on the profile page when moused over
-    return ({ target }) => {
-      const swapSrc = target.getAttribute(swapTo);
-      //only change the img source if autoplay is off and the image src is actually different
-      if(target.getAttribute('data-autoplay') !== 'true' && target.src !== swapSrc) {
-        target.src = swapSrc;
-      }
-    };
+    toggleButton.classList.toggle('active');
+    sidebar.classList.toggle('visible');
   };
 
-  delegate(document, 'img#profile_page_avatar', 'mouseover', getProfileAvatarAnimationHandler('data-original'));
-
-  delegate(document, 'img#profile_page_avatar', 'mouseout', getProfileAvatarAnimationHandler('data-static'));
-
-  delegate(document, '#account_header', 'change', ({ target }) => {
-    const header = document.querySelector('.card .card__img img');
-    const [file] = target.files || [];
-    const url = file ? URL.createObjectURL(file) : header.dataset.originalSrc;
-
-    header.src = url;
-  });
-
-  delegate(document, '#account_locked', 'change', ({ target }) => {
-    const lock = document.querySelector('.card .display-name i');
-
-    if (lock) {
-      if (target.checked) {
-        delete lock.dataset.hidden;
-      } else {
-        lock.dataset.hidden = 'true';
-      }
-    }
-  });
-
-  delegate(document, '.input-copy input', 'click', ({ target }) => {
-    target.focus();
-    target.select();
-    target.setSelectionRange(0, target.value.length);
-  });
-
-  delegate(document, '.input-copy button', 'click', ({ target }) => {
-    const input = target.parentNode.querySelector('.input-copy__wrapper input');
-
-    const oldReadOnly = input.readonly;
-
-    input.readonly = false;
-    input.focus();
-    input.select();
-    input.setSelectionRange(0, input.value.length);
-
-    try {
-      if (document.execCommand('copy')) {
-        input.blur();
-        target.parentNode.classList.add('copied');
-
-        setTimeout(() => {
-          target.parentNode.classList.remove('copied');
-        }, 700);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-
-    input.readonly = oldReadOnly;
-  });
-
   delegate(document, '.sidebar__toggle__icon', 'click', () => {
-    document.querySelector('.sidebar ul').classList.toggle('visible');
+    toggleSidebar();
   });
 
-  delegate(document, '.quote-status', 'click', ({ target }) => {
-    if (target.closest('.status__content__spoiler-link') ||
-      target.closest('.media-gallery') ||
-      target.closest('.video-player') ||
-      target.closest('.audio-player')) {
-      return false;
+  delegate(document, '.sidebar__toggle__icon', 'keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      toggleSidebar();
     }
-
-    let url = target.closest('.quote-status').getAttribute('dataurl');
-    if (target.closest('.status__display-name')) {
-      url = target.closest('.status__display-name').getAttribute('href');
-    } else if (target.closest('.status-card')) {
-      url = target.closest('.status-card').getAttribute('href');
-    }
-
-    if (window.location.hostname === url.split('/')[2].split(':')[0]) {
-      window.location.href = url;
-    } else {
-      window.open(url, 'blank');
-    }
-    return false;
   });
 
   // Empty the honeypot fields in JS in case something like an extension

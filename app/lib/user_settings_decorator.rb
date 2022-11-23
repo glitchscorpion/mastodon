@@ -20,26 +20,25 @@ class UserSettingsDecorator
     user.settings['default_privacy']     = default_privacy_preference if change?('setting_default_privacy')
     user.settings['default_sensitive']   = default_sensitive_preference if change?('setting_default_sensitive')
     user.settings['default_language']    = default_language_preference if change?('setting_default_language')
-    user.settings['default_federation']  = default_federation_preference if change?('setting_default_federation')
-    user.settings['default_content_type']= default_content_type_preference if change?('setting_default_content_type')
     user.settings['unfollow_modal']      = unfollow_modal_preference if change?('setting_unfollow_modal')
     user.settings['boost_modal']         = boost_modal_preference if change?('setting_boost_modal')
+    user.settings['favourite_modal']     = favourite_modal_preference if change?('setting_favourite_modal')
     user.settings['delete_modal']        = delete_modal_preference if change?('setting_delete_modal')
     user.settings['auto_play_gif']       = auto_play_gif_preference if change?('setting_auto_play_gif')
     user.settings['display_media']       = display_media_preference if change?('setting_display_media')
     user.settings['expand_spoilers']     = expand_spoilers_preference if change?('setting_expand_spoilers')
     user.settings['reduce_motion']       = reduce_motion_preference if change?('setting_reduce_motion')
     user.settings['disable_swiping']     = disable_swiping_preference if change?('setting_disable_swiping')
-    user.settings['enable_snowfall']     = enable_snowfall if change?('setting_enable_snowfall')
-    user.settings['enable_noto_serif']   = enable_noto_serif if change?('setting_enable_noto_serif')
-    user.settings['custom_css']          = custom_css if change?('setting_custom_css')
-    user.settings['icon_pack']           = icon_pack if change?('setting_icon_pack')
     user.settings['system_font_ui']      = system_font_ui_preference if change?('setting_system_font_ui')
+    user.settings['system_emoji_font']   = system_emoji_font_preference if change?('setting_system_emoji_font')
     user.settings['noindex']             = noindex_preference if change?('setting_noindex')
-    user.settings['theme']               = theme_preference if change?('setting_theme')
+    user.settings['hide_followers_count'] = hide_followers_count_preference if change?('setting_hide_followers_count')
+    user.settings['flavour']             = flavour_preference if change?('setting_flavour')
+    user.settings['skin']                = skin_preference if change?('setting_skin')
     user.settings['aggregate_reblogs']   = aggregate_reblogs_preference if change?('setting_aggregate_reblogs')
     user.settings['show_application']    = show_application_preference if change?('setting_show_application')
     user.settings['advanced_layout']     = advanced_layout_preference if change?('setting_advanced_layout')
+    user.settings['default_content_type']= default_content_type_preference if change?('setting_default_content_type')
     user.settings['use_blurhash']        = use_blurhash_preference if change?('setting_use_blurhash')
     user.settings['use_pending_items']   = use_pending_items_preference if change?('setting_use_pending_items')
     user.settings['trends']              = trends_preference if change?('setting_trends')
@@ -63,14 +62,6 @@ class UserSettingsDecorator
     boolean_cast_setting 'setting_default_sensitive'
   end
 
-  def default_federation_preference
-    boolean_cast_setting 'setting_default_federation'
-  end
-
-  def default_content_type_preference
-    settings['setting_default_content_type']
-  end
-
   def unfollow_modal_preference
     boolean_cast_setting 'setting_unfollow_modal'
   end
@@ -79,12 +70,20 @@ class UserSettingsDecorator
     boolean_cast_setting 'setting_boost_modal'
   end
 
+  def favourite_modal_preference
+    boolean_cast_setting 'setting_favourite_modal'
+  end
+
   def delete_modal_preference
     boolean_cast_setting 'setting_delete_modal'
   end
 
   def system_font_ui_preference
     boolean_cast_setting 'setting_system_font_ui'
+  end
+
+  def system_emoji_font_preference
+    boolean_cast_setting 'setting_system_emoji_font'
   end
 
   def auto_play_gif_preference
@@ -107,32 +106,24 @@ class UserSettingsDecorator
     boolean_cast_setting 'setting_disable_swiping'
   end
 
-  def enable_snowfall
-    boolean_cast_setting 'setting_enable_snowfall'
-  end
-
-  def enable_noto_serif
-    boolean_cast_setting 'setting_enable_noto_serif'
-  end
-
-  def custom_css
-    settings['setting_custom_css']
-  end
-
-  def icon_pack
-    settings['setting_icon_pack']
-  end
-
   def noindex_preference
     boolean_cast_setting 'setting_noindex'
   end
 
-  def show_application_preference
-    boolean_cast_setting 'setting_show_application'
+  def flavour_preference
+    settings['setting_flavour']
   end
 
-  def theme_preference
-    settings['setting_theme']
+  def skin_preference
+    settings['setting_skin']
+  end
+
+  def hide_followers_count_preference
+    boolean_cast_setting 'setting_hide_followers_count'
+  end
+
+  def show_application_preference
+    boolean_cast_setting 'setting_show_application'
   end
 
   def default_language_preference
@@ -145,6 +136,10 @@ class UserSettingsDecorator
 
   def advanced_layout_preference
     boolean_cast_setting 'setting_advanced_layout'
+  end
+
+  def default_content_type_preference
+    settings['setting_default_content_type']
   end
 
   def use_blurhash_preference

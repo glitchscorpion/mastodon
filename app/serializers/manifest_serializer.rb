@@ -22,25 +22,26 @@ class ManifestSerializer < ActiveModel::Serializer
              :share_target, :shortcuts
 
   def name
-    object.site_title
+    object.title
   end
 
   def short_name
-    object.site_title
+    object.title
   end
 
   def icons
     ICON_SIZES.map do |size|
       {
-        src: full_pack_url("media/icons/android-chrome-#{size}x#{size}#{ENV['LOGO_PACK'] || ''}.png"),
+        src: full_pack_url("media/icons/android-chrome-#{size}x#{size}.png"),
         sizes: "#{size}x#{size}",
         type: 'image/png',
+        purpose: 'any maskable',
       }
     end
   end
 
   def theme_color
-    '#6364FF'
+    '#191b22'
   end
 
   def background_color
@@ -52,7 +53,7 @@ class ManifestSerializer < ActiveModel::Serializer
   end
 
   def start_url
-    '/web/home'
+    '/home'
   end
 
   def scope
@@ -77,11 +78,11 @@ class ManifestSerializer < ActiveModel::Serializer
     [
       {
         name: 'Compose new post',
-        url: '/web/publish',
+        url: '/publish',
       },
       {
         name: 'Notifications',
-        url: '/web/notifications',
+        url: '/notifications',
       },
     ]
   end

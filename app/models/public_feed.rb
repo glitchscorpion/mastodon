@@ -8,6 +8,7 @@ class PublicFeed
   # @option [Boolean] :local
   # @option [Boolean] :remote
   # @option [Boolean] :only_media
+  # @option [Boolean] :allow_local_only
   def initialize(account, options = {})
     @account = account
     @options = options
@@ -19,17 +20,16 @@ class PublicFeed
   # @param [Integer] min_id
   # @return [Array<Status>]
   def get(limit, max_id = nil, since_id = nil, min_id = nil)
-    return [] if account_is_bot?
-
     scope = public_scope
 
+    scope.merge!(without_local_only_scope) unless allow_local_only?
     scope.merge!(without_replies_scope) unless with_replies?
     scope.merge!(without_reblogs_scope) unless with_reblogs?
     scope.merge!(local_only_scope) if local_only?
-    # scope.merge!(without_bots_scope) if local_only?
     scope.merge!(remote_only_scope) if remote_only?
     scope.merge!(account_filters_scope) if account?
     scope.merge!(media_only_scope) if media_only?
+    scope.merge!(language_scope) if account&.chosen_languages.present?
 
     scope.cache_ids.to_a_paginated_by_id(limit, max_id: max_id, since_id: since_id, min_id: min_id)
   end
@@ -38,8 +38,8 @@ class PublicFeed
 
   attr_reader :account, :options
 
-  def account_is_bot?
-    @account&.bot?
+  def allow_local_only?
+    local_account? && (local_only? || options[:allow_local_only])
   end
 
   def with_reblogs?
@@ -62,6 +62,10 @@ class PublicFeed
     account.present?
   end
 
+  def local_account?
+    account&.local?
+  end
+
   def media_only?
     options[:only_media]
   end
@@ -78,10 +82,6 @@ class PublicFeed
     Status.remote
   end
 
-  def without_bots_scope
-    Status.excluding_bots_accounts
-  end
-
   def without_replies_scope
     Status.without_replies
   end
@@ -94,10 +94,17 @@ class PublicFeed
     Status.joins(:media_attachments).group(:id)
   end
 
+  def without_local_only_scope
+    Status.not_local_only
+  end
+
+  def language_scope
+    Status.where(language: account.chosen_languages)
+  end
+
   def account_filters_scope
     Status.not_excluded_by_account(account).tap do |scope|
       scope.merge!(Status.not_domain_blocked_by_account(account)) unless local_only?
-      scope.merge!(Status.in_chosen_languages(account)) if account.chosen_languages.present?
     end
   end
 end

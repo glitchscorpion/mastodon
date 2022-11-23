@@ -34,6 +34,10 @@ const makeEmojiMap = record => record.get('emojis').reduce((obj, emoji) => {
 export default @injectIntl
 class Poll extends ImmutablePureComponent {
 
+  static contextTypes = {
+    identity: PropTypes.object,
+  };
+
   static propTypes = {
     poll: ImmutablePropTypes.map,
     intl: PropTypes.object.isRequired,
@@ -49,9 +53,6 @@ class Poll extends ImmutablePureComponent {
 
   static getDerivedStateFromProps (props, state) {
     const { poll, intl } = props;
-    if (!poll) {
-      return null;
-    }
     const expires_at = poll.get('expires_at');
     const expired = poll.get('expired') || expires_at !== null && (new Date(expires_at)).getTime() < intl.now();
     return (expired === state.expired) ? null : { expired };
@@ -72,7 +73,7 @@ class Poll extends ImmutablePureComponent {
   _setupTimer () {
     const { poll, intl } = this.props;
     clearTimeout(this._timer);
-    if (!this.state.expired && !!poll) {
+    if (!this.state.expired) {
       const delay = (new Date(poll.get('expires_at'))).getTime() - intl.now();
       this._timer = setTimeout(() => {
         this.setState({ expired: true });
@@ -220,7 +221,7 @@ class Poll extends ImmutablePureComponent {
         </ul>
 
         <div className='poll__footer'>
-          {!showResults && <button className='button button-secondary' disabled={disabled} onClick={this.handleVote}><FormattedMessage id='poll.vote' defaultMessage='Vote' /></button>}
+          {!showResults && <button className='button button-secondary' disabled={disabled || !this.context.identity.signedIn} onClick={this.handleVote}><FormattedMessage id='poll.vote' defaultMessage='Vote' /></button>}
           {showResults && !this.props.disabled && <span><button className='poll__link' onClick={this.handleRefresh}><FormattedMessage id='poll.refresh' defaultMessage='Refresh' /></button> · </span>}
           {votesCount}
           {poll.get('expires_at') && <span> · {timeRemaining}</span>}

@@ -7,6 +7,7 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import { createSelector } from 'reselect';
 import { fetchStatus } from '../../actions/statuses';
 import MissingIndicator from '../../components/missing_indicator';
+import LoadingIndicator from 'mastodon/components/loading_indicator';
 import DetailedStatus from './components/detailed_status';
 import ActionBar from './components/action_bar';
 import Column from '../ui/components/column';
@@ -22,7 +23,6 @@ import {
 } from '../../actions/interactions';
 import {
   replyCompose,
-  quoteCompose,
   mentionCompose,
   directCompose,
 } from '../../actions/compose';
@@ -33,8 +33,8 @@ import {
   editStatus,
   hideStatus,
   revealStatus,
-  hideQuote,
-  revealQuote,
+  translateStatus,
+  undoStatusTranslation,
 } from '../../actions/statuses';
 import {
   unblockAccount,
@@ -61,6 +61,7 @@ import { boostModal, deleteModal } from '../../initial_state';
 import { attachFullscreenListener, detachFullscreenListener, isFullscreen } from '../ui/util/fullscreen';
 import { textForScreenReader, defaultMediaVisibility } from '../../components/status';
 import Icon from 'mastodon/components/icon';
+import { Helmet } from 'react-helmet';
 
 const messages = defineMessages({
   deleteConfirm: { id: 'confirmations.delete.confirm', defaultMessage: 'Delete' },
@@ -72,8 +73,6 @@ const messages = defineMessages({
   detailedStatus: { id: 'status.detailed_status', defaultMessage: 'Detailed conversation view' },
   replyConfirm: { id: 'confirmations.reply.confirm', defaultMessage: 'Reply' },
   replyMessage: { id: 'confirmations.reply.message', defaultMessage: 'Replying now will overwrite the message you are currently composing. Are you sure you want to proceed?' },
-  quoteConfirm: { id: 'confirmations.quote.confirm', defaultMessage: 'Quote' },
-  quoteMessage: { id: 'confirmations.quote.message', defaultMessage: 'Quoting now will overwrite the message you are currently composing. Are you sure you want to proceed?' },
   blockDomainConfirm: { id: 'confirmations.domain_block.confirm', defaultMessage: 'Hide entire domain' },
 });
 
@@ -147,6 +146,7 @@ const makeMapStateToProps = () => {
     }
 
     return {
+      isLoading: state.getIn(['statuses', props.params.statusId, 'isLoading']),
       status,
       ancestorsIds,
       descendantsIds,
@@ -159,18 +159,37 @@ const makeMapStateToProps = () => {
   return mapStateToProps;
 };
 
+const truncate = (str, num) => {
+  if (str.length > num) {
+    return str.slice(0, num) + '…';
+  } else {
+    return str;
+  }
+};
+
+const titleFromStatus = status => {
+  const displayName = status.getIn(['account', 'display_name']);
+  const username = status.getIn(['account', 'username']);
+  const prefix = displayName.trim().length === 0 ? username : displayName;
+  const text = status.get('search_index');
+
+  return `${prefix}: "${truncate(text, 30)}"`;
+};
+
 export default @injectIntl
 @connect(makeMapStateToProps)
 class Status extends ImmutablePureComponent {
 
   static contextTypes = {
     router: PropTypes.object,
+    identity: PropTypes.object,
   };
 
   static propTypes = {
     params: PropTypes.object.isRequired,
     dispatch: PropTypes.func.isRequired,
     status: ImmutablePropTypes.map,
+    isLoading: PropTypes.bool,
     ancestorsIds: ImmutablePropTypes.list,
     descendantsIds: ImmutablePropTypes.list,
     intl: PropTypes.object.isRequired,
@@ -186,7 +205,6 @@ class Status extends ImmutablePureComponent {
   state = {
     fullscreen: false,
     showMedia: defaultMediaVisibility(this.props.status),
-    showQuoteMedia: defaultMediaVisibility(this.props.status ? this.props.status.get('quote', null) : null),
     loadedStatusId: undefined,
   };
 
@@ -205,8 +223,7 @@ class Status extends ImmutablePureComponent {
     }
 
     if (nextProps.status && nextProps.status.get('id') !== this.state.loadedStatusId) {
-      this.setState({ showMedia: defaultMediaVisibility(nextProps.status), loadedStatusId: nextProps.status.get('id'),
-        showQuoteMedia: defaultMediaVisibility(nextProps.status.get('quote', null)) });
+      this.setState({ showMedia: defaultMediaVisibility(nextProps.status), loadedStatusId: nextProps.status.get('id') });
     }
   }
 
@@ -214,15 +231,22 @@ class Status extends ImmutablePureComponent {
     this.setState({ showMedia: !this.state.showMedia });
   }
 
-  handleToggleQuoteMediaVisibility = () => {
-    this.setState({ showQuoteMedia: !this.state.showQuoteMedia });
-  }
-
   handleFavouriteClick = (status) => {
-    if (status.get('favourited')) {
-      this.props.dispatch(unfavourite(status));
+    const { dispatch } = this.props;
+    const { signedIn } = this.context.identity;
+
+    if (signedIn) {
+      if (status.get('favourited')) {
+        dispatch(unfavourite(status));
+      } else {
+        dispatch(favourite(status));
+      }
     } else {
-      this.props.dispatch(favourite(status));
+      dispatch(openModal('INTERACTION', {
+        type: 'favourite',
+        accountId: status.getIn(['account', 'id']),
+        url: status.get('url'),
+      }));
     }
   }
 
@@ -235,15 +259,25 @@ class Status extends ImmutablePureComponent {
   }
 
   handleReplyClick = (status) => {
-    let { askReplyConfirmation, dispatch, intl } = this.props;
-    if (askReplyConfirmation) {
-      dispatch(openModal('CONFIRM', {
-        message: intl.formatMessage(messages.replyMessage),
-        confirm: intl.formatMessage(messages.replyConfirm),
-        onConfirm: () => dispatch(replyCompose(status, this.context.router.history)),
-      }));
+    const { askReplyConfirmation, dispatch, intl } = this.props;
+    const { signedIn } = this.context.identity;
+
+    if (signedIn) {
+      if (askReplyConfirmation) {
+        dispatch(openModal('CONFIRM', {
+          message: intl.formatMessage(messages.replyMessage),
+          confirm: intl.formatMessage(messages.replyConfirm),
+          onConfirm: () => dispatch(replyCompose(status, this.context.router.history)),
+        }));
+      } else {
+        dispatch(replyCompose(status, this.context.router.history));
+      }
     } else {
-      dispatch(replyCompose(status, this.context.router.history));
+      dispatch(openModal('INTERACTION', {
+        type: 'reply',
+        accountId: status.getIn(['account', 'id']),
+        url: status.get('url'),
+      }));
     }
   }
 
@@ -252,14 +286,25 @@ class Status extends ImmutablePureComponent {
   }
 
   handleReblogClick = (status, e) => {
-    if (status.get('reblogged')) {
-      this.props.dispatch(unreblog(status));
-    } else {
-      if ((e && e.shiftKey) || !boostModal) {
-        this.handleModalReblog(status);
+    const { dispatch } = this.props;
+    const { signedIn } = this.context.identity;
+
+    if (signedIn) {
+      if (status.get('reblogged')) {
+        dispatch(unreblog(status));
       } else {
-        this.props.dispatch(initBoostModal({ status, onReblog: this.handleModalReblog }));
+        if ((e && e.shiftKey) || !boostModal) {
+          this.handleModalReblog(status);
+        } else {
+          dispatch(initBoostModal({ status, onReblog: this.handleModalReblog }));
+        }
       }
+    } else {
+      dispatch(openModal('INTERACTION', {
+        type: 'reblog',
+        accountId: status.getIn(['account', 'id']),
+        url: status.get('url'),
+      }));
     }
   }
 
@@ -268,19 +313,6 @@ class Status extends ImmutablePureComponent {
       this.props.dispatch(unbookmark(status));
     } else {
       this.props.dispatch(bookmark(status));
-    }
-  }
-
-  handleQuoteClick = (status) => {
-    let { askReplyConfirmation, dispatch, intl } = this.props;
-    if (askReplyConfirmation) {
-      dispatch(openModal('CONFIRM', {
-        message: intl.formatMessage(messages.quoteMessage),
-        confirm: intl.formatMessage(messages.quoteConfirm),
-        onConfirm: () => dispatch(quoteCompose(status, this.context.router.history)),
-      }));
-    } else {
-      dispatch(quoteCompose(status, this.context.router.history));
     }
   }
 
@@ -318,14 +350,6 @@ class Status extends ImmutablePureComponent {
     this.props.dispatch(openModal('VIDEO', { statusId: this.props.status.get('id'), media, options }));
   }
 
-  handleOpenMediaQuote = (media, index) => {
-    this.props.dispatch(openModal('MEDIA', { statusId: this.props.status.getIn(['quote', 'id']), media, index }));
-  }
-
-  handleOpenVideoQuote = (media, options) => {
-    this.props.dispatch(openModal('VIDEO', { statusId: this.props.status.getIn(['quote', 'id']), media, options }));
-  }
-
   handleHotkeyOpenMedia = e => {
     const { status } = this.props;
 
@@ -360,14 +384,6 @@ class Status extends ImmutablePureComponent {
     }
   }
 
-  handleQuoteToggleHidden = (status) => {
-    if (status.get('quote_hidden')) {
-      this.props.dispatch(revealQuote(status.get('id')));
-    } else {
-      this.props.dispatch(hideQuote(status.get('id')));
-    }
-  }
-
   handleToggleAll = () => {
     const { status, ancestorsIds, descendantsIds } = this.props;
     const statusIds = [status.get('id')].concat(ancestorsIds.toJS(), descendantsIds.toJS());
@@ -376,6 +392,16 @@ class Status extends ImmutablePureComponent {
       this.props.dispatch(revealStatus(statusIds));
     } else {
       this.props.dispatch(hideStatus(statusIds));
+    }
+  }
+
+  handleTranslate = status => {
+    const { dispatch } = this.props;
+
+    if (status.get('translation')) {
+      dispatch(undoStatusTranslation(status.get('id')));
+    } else {
+      dispatch(translateStatus(status.get('id')));
     }
   }
 
@@ -543,8 +569,16 @@ class Status extends ImmutablePureComponent {
 
   render () {
     let ancestors, descendants;
-    const { status, ancestorsIds, descendantsIds, intl, domain, multiColumn, pictureInPicture } = this.props;
+    const { isLoading, status, ancestorsIds, descendantsIds, intl, domain, multiColumn, pictureInPicture } = this.props;
     const { fullscreen } = this.state;
+
+    if (isLoading) {
+      return (
+        <Column>
+          <LoadingIndicator />
+        </Column>
+      );
+    }
 
     if (status === null) {
       return (
@@ -562,6 +596,9 @@ class Status extends ImmutablePureComponent {
     if (descendantsIds && descendantsIds.size > 0) {
       descendants = <div>{this.renderChildren(descendantsIds)}</div>;
     }
+
+    const isLocal = status.getIn(['account', 'acct'], '').indexOf('@') === -1;
+    const isIndexable = !status.getIn(['account', 'noindex']);
 
     const handlers = {
       moveUp: this.handleHotkeyMoveUp,
@@ -582,7 +619,7 @@ class Status extends ImmutablePureComponent {
           showBackButton
           multiColumn={multiColumn}
           extraButton={(
-            <button className='column-header__button' title={intl.formatMessage(status.get('hidden') ? messages.revealAll : messages.hideAll)} aria-label={intl.formatMessage(status.get('hidden') ? messages.revealAll : messages.hideAll)} onClick={this.handleToggleAll} aria-pressed={status.get('hidden') ? 'false' : 'true'}><Icon id={status.get('hidden') ? 'eye-slash' : 'eye'} /></button>
+            <button type='button' className='column-header__button' title={intl.formatMessage(status.get('hidden') ? messages.revealAll : messages.hideAll)} aria-label={intl.formatMessage(status.get('hidden') ? messages.revealAll : messages.hideAll)} onClick={this.handleToggleAll}><Icon id={status.get('hidden') ? 'eye-slash' : 'eye'} /></button>
           )}
         />
 
@@ -597,16 +634,12 @@ class Status extends ImmutablePureComponent {
                   status={status}
                   onOpenVideo={this.handleOpenVideo}
                   onOpenMedia={this.handleOpenMedia}
-                  onOpenVideoQuote={this.handleOpenVideoQuote}
-                  onOpenMediaQuote={this.handleOpenMediaQuote}
                   onToggleHidden={this.handleToggleHidden}
+                  onTranslate={this.handleTranslate}
                   domain={domain}
                   showMedia={this.state.showMedia}
                   onToggleMediaVisibility={this.handleToggleMediaVisibility}
                   pictureInPicture={pictureInPicture}
-                  onQuoteToggleHidden={this.handleQuoteToggleHidden}
-                  showQuoteMedia={this.state.showQuoteMedia}
-                  onToggleQuoteMediaVisibility={this.handleToggleQuoteMediaVisibility}
                 />
 
                 <ActionBar
@@ -616,7 +649,6 @@ class Status extends ImmutablePureComponent {
                   onFavourite={this.handleFavouriteClick}
                   onReblog={this.handleReblogClick}
                   onBookmark={this.handleBookmarkClick}
-                  onQuote={this.handleQuoteClick}
                   onDelete={this.handleDeleteClick}
                   onEdit={this.handleEditClick}
                   onDirect={this.handleDirectClick}
@@ -638,6 +670,11 @@ class Status extends ImmutablePureComponent {
             {descendants}
           </div>
         </ScrollContainer>
+
+        <Helmet>
+          <title>{titleFromStatus(status)}</title>
+          <meta name='robots' content={(isLocal && isIndexable) ? 'all' : 'noindex'} />
+        </Helmet>
       </Column>
     );
   }

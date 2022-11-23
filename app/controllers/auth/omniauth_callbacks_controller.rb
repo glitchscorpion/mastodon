@@ -4,16 +4,8 @@ class Auth::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   skip_before_action :verify_authenticity_token
 
   def self.provides_callback_for(provider)
-    provider_id = provider.to_s.chomp '_oauth2'
-
     define_method provider do
       @user = User.find_for_oauth(request.env['omniauth.auth'], current_user)
-
-      if @user.nil?
-        redirect_to new_user_registration_url
-        set_flash_message(:alert, 'should_register_before_auth_login', scope: 'devise.failure')
-        return
-      end
 
       if @user.persisted?
         LoginActivity.create(
@@ -26,7 +18,8 @@ class Auth::OmniauthCallbacksController < Devise::OmniauthCallbacksController
         )
 
         sign_in_and_redirect @user, event: :authentication
-        set_flash_message(:notice, :success, kind: (Devise.omniauth_configs[provider].strategy.display_name || provider_id).capitalize) if is_navigational_format?
+        label = Devise.omniauth_configs[provider]&.strategy&.display_name.presence || I18n.t("auth.providers.#{provider}", default: provider.to_s.chomp('_oauth2').capitalize)
+        set_flash_message(:notice, :success, kind: label) if is_navigational_format?
       else
         session["devise.#{provider}_data"] = request.env['omniauth.auth']
         redirect_to new_user_registration_url

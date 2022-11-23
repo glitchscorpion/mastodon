@@ -8,14 +8,16 @@ class Auth::RegistrationsController < Devise::RegistrationsController
   before_action :set_invite, only: [:new, :create]
   before_action :check_enabled_registrations, only: [:new, :create]
   before_action :configure_sign_up_params, only: [:create]
+  before_action :set_pack
   before_action :set_sessions, only: [:edit, :update]
   before_action :set_strikes, only: [:edit, :update]
   before_action :set_instance_presenter, only: [:new, :create, :update]
   before_action :set_body_classes, only: [:new, :create, :edit, :update]
   before_action :require_not_suspended!, only: [:update]
   before_action :set_cache_headers, only: [:edit, :update]
+  before_action :set_rules, only: :new
+  before_action :require_rules_acceptance!, only: :new
   before_action :set_registration_form_time, only: :new
-  before_action :check_captcha, only: [:create]
 
   skip_before_action :require_functional!, only: [:edit, :update]
 
@@ -56,7 +58,7 @@ class Auth::RegistrationsController < Devise::RegistrationsController
 
   def configure_sign_up_params
     devise_parameter_sanitizer.permit(:sign_up) do |u|
-      u.permit({ account_attributes: [:username], invite_request_attributes: [:text] }, :email, :password, :password_confirmation, :invite_code, :agreement, :website, :confirm_password)
+      u.permit({ account_attributes: [:username, :display_name], invite_request_attributes: [:text] }, :email, :password, :password_confirmation, :invite_code, :agreement, :website, :confirm_password)
     end
   end
 
@@ -108,14 +110,8 @@ class Auth::RegistrationsController < Devise::RegistrationsController
 
   private
 
-  # https://github.com/heartcombo/devise/wiki/How-To:-Use-Recaptcha-with-Devise
-  def check_captcha
-    if Setting.enable_captcha && !verify_rucaptcha?
-      build_resource(sign_up_params)
-      resource.validate
-      resource.errors.add(:base, I18n.t('auth.rucaptcha_invalid'))
-      respond_with resource
-    end
+  def set_pack
+    use_pack %w(edit update).include?(action_name) ? 'admin' : 'auth'
   end
 
   def set_instance_presenter
@@ -149,7 +145,20 @@ class Auth::RegistrationsController < Devise::RegistrationsController
     forbidden if current_account.suspended?
   end
 
+  def set_rules
+    @rules = Rule.ordered
+  end
+
+  def require_rules_acceptance!
+    return if @rules.empty? || (session[:accept_token].present? && params[:accept] == session[:accept_token])
+
+    @accept_token = session[:accept_token] = SecureRandom.hex
+    @invite_code  = invite_code
+
+    set_locale { render :rules }
+  end
+
   def set_cache_headers
-    response.headers['Cache-Control'] = 'no-cache, no-store, max-age=0, must-revalidate'
+    response.headers['Cache-Control'] = 'private, no-store'
   end
 end

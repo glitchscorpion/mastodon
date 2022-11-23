@@ -31,11 +31,28 @@ class Sanitize
         next true if /^(h|p|u|dt|e)-/.match?(e) # microformats classes
         next true if /^(mention|hashtag)$/.match?(e) # semantic classes
         next true if /^(ellipsis|invisible)$/.match?(e) # link formatting classes
-        next true if /^quote-inline$/.match?(e) # quote inline classes
-        next true if /(ge|gs|o|ow|c|cm|cp|c1|cs|n|py|nl|ni|nb|bp|nf|na|nx|nc|nn|no|ne|nd|nt|kn|k|kc|kd|kp|kr|kt|nv|vg|vc|vi|m|il|mf|mh|mi|mo|s|sr|s2|sb|sh|sx|s1|ss|se|si|sc|sd|l|ld|p|w|err|gp|gi|gd|gh|gu|hll|lineno|highlight)/.match?(e) # ruby-rouge classes
       end
 
       node['class'] = class_list.join(' ')
+    end
+
+    IMG_TAG_TRANSFORMER = lambda do |env|
+      node = env[:node]
+
+      return unless env[:node_name] == 'img'
+
+      node.name = 'a'
+
+      node['href'] = node['src']
+      if node['alt'].present?
+        node.content = "[🖼  #{node['alt']}]"
+      else
+        url = node['href']
+        prefix = url.match(/\Ahttps?:\/\/(www\.)?/).to_s
+        text   = url[prefix.length, 30]
+        text   = text + "…" if url[prefix.length..-1].length > 30
+        node.content = "[🖼  #{text}]"
+      end
     end
 
     UNSUPPORTED_HREF_TRANSFORMER = lambda do |env|
@@ -54,30 +71,16 @@ class Sanitize
       current_node.replace(current_node.text) unless LINK_PROTOCOLS.include?(scheme)
     end
 
-    UNSUPPORTED_ELEMENTS_TRANSFORMER = lambda do |env|
-      return unless %w(h1 h2 h3 h4 h5 h6 ul ol li).include?(env[:node_name])
-
-      current_node = env[:node]
-
-      case env[:node_name]
-      when 'li'
-        current_node.traverse do |node|
-          next unless %w(p ul ol li).include?(node.name)
-
-          node.add_next_sibling('<br>') if node.next_sibling
-          node.replace(node.children) unless node.text?
-        end
-      else
-        current_node.name = 'p'
-      end
-    end
-
     MASTODON_STRICT ||= freeze_config(
-      elements: %w(p br span a em i  strong b code del s blockquote pre code),
+      elements: %w(p br span a abbr del pre blockquote code b strong u sub sup i em h1 h2 h3 h4 h5 ul ol li),
 
       attributes: {
-        'a'    => %w(href rel class),
-        'span' => %w(class),
+        'a'          => %w(href rel class title),
+        'span'       => %w(class),
+        'abbr'       => %w(title),
+        'blockquote' => %w(cite),
+        'ol'         => %w(start reversed),
+        'li'         => %w(value),
       },
 
       add_attributes: {
@@ -85,16 +88,16 @@ class Sanitize
           'rel' => 'nofollow noopener noreferrer',
           'target' => '_blank',
         },
-        'pre' => {
-          'class' => 'highlight'
-        }
       },
 
-      protocols: {},
+      protocols: {
+        'a'          => { 'href' => LINK_PROTOCOLS },
+        'blockquote' => { 'cite' => LINK_PROTOCOLS },
+      },
 
       transformers: [
         CLASS_WHITELIST_TRANSFORMER,
-        UNSUPPORTED_ELEMENTS_TRANSFORMER,
+        IMG_TAG_TRANSFORMER,
         UNSUPPORTED_HREF_TRANSFORMER,
       ]
     )
@@ -119,6 +122,49 @@ class Sanitize
         'iframe' => { 'src' => HTTP_PROTOCOLS },
         'source' => { 'src' => HTTP_PROTOCOLS }
       )
+    )
+
+    LINK_REL_TRANSFORMER = lambda do |env|
+      return unless env[:node_name] == 'a' && env[:node]['href']
+
+      node = env[:node]
+
+      rel = (node['rel'] || '').split(' ') & ['tag']
+      rel += ['nofollow', 'noopener', 'noreferrer'] unless TagManager.instance.local_url?(node['href'])
+
+      if rel.empty?
+        node.remove_attribute('rel')
+      else
+        node['rel'] = rel.join(' ')
+      end
+    end
+
+    LINK_TARGET_TRANSFORMER = lambda do |env|
+      return unless env[:node_name] == 'a' && env[:node]['href']
+
+      node = env[:node]
+      if node['target'] != '_blank' && TagManager.instance.local_url?(node['href'])
+        node.remove_attribute('target')
+      else
+        node['target'] = '_blank'
+      end
+    end
+
+    MASTODON_OUTGOING ||= freeze_config MASTODON_STRICT.merge(
+      attributes: merge(
+        MASTODON_STRICT[:attributes],
+        'a' => %w(href rel class title target)
+      ),
+
+      add_attributes: {},
+
+      transformers: [
+        CLASS_WHITELIST_TRANSFORMER,
+        IMG_TAG_TRANSFORMER,
+        UNSUPPORTED_HREF_TRANSFORMER,
+        LINK_REL_TRANSFORMER,
+        LINK_TARGET_TRANSFORMER,
+      ]
     )
   end
 end

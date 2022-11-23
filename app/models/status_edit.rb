@@ -10,12 +10,11 @@
 #  spoiler_text                 :text             default(""), not null
 #  created_at                   :datetime         not null
 #  updated_at                   :datetime         not null
+#  content_type                 :string
 #  ordered_media_attachment_ids :bigint(8)        is an Array
 #  media_descriptions           :text             is an Array
 #  poll_options                 :string           is an Array
 #  sensitive                    :boolean
-#  content_type                 :string
-#  local_only                   :boolean
 #
 
 class StatusEdit < ApplicationRecord
@@ -32,7 +31,7 @@ class StatusEdit < ApplicationRecord
              :preview_remote_url, :text_url, :meta, :blurhash,
              :not_processed?, :needs_redownload?, :local?,
              :file, :thumbnail, :thumbnail_remote_url,
-             :shortcode, to: :media_attachment
+             :shortcode, :video?, :audio?, to: :media_attachment
   end
 
   rate_limit by: :account, family: :statuses
@@ -42,7 +41,8 @@ class StatusEdit < ApplicationRecord
 
   default_scope { order(id: :asc) }
 
-  delegate :local?, to: :status
+  delegate :local?, :application, :edited?, :edited_at,
+           :discarded?, :visibility, to: :status
 
   def emojis
     return @emojis if defined?(@emojis)
@@ -60,5 +60,13 @@ class StatusEdit < ApplicationRecord
         ordered_media_attachment_ids.map.with_index { |media_attachment_id, index| PreservedMediaAttachment.new(media_attachment: map[media_attachment_id], description: media_descriptions[index]) }
       end
     end
+  end
+
+  def proper
+    self
+  end
+
+  def reblog?
+    false
   end
 end

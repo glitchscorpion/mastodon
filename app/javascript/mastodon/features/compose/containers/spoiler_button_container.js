@@ -1,6 +1,5 @@
 import { connect } from 'react-redux';
-// import TextIconButton from '../components/text_icon_button';
-import CwMarkIconButton from '../components/cw_mark_button';
+import TextIconButton from '../components/text_icon_button';
 import { changeComposeSpoilerness } from '../../../actions/compose';
 import { injectIntl, defineMessages } from 'react-intl';
 
@@ -24,5 +23,4 @@ const mapDispatchToProps = dispatch => ({
 
 });
 
-// export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(TextIconButton));
-export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(CwMarkIconButton));
+export default injectIntl(connect(mapStateToProps, mapDispatchToProps)(TextIconButton));

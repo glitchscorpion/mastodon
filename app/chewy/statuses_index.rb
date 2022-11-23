@@ -18,18 +18,9 @@ class StatusesIndex < Chewy::Index
         language: 'possessive_english',
       },
     },
-    char_filter: {
-      tsconvert: {
-        type: 'stconvert',
-        keep_both: false,
-        delimiter: '#',
-        convert_type: 't2s',
-      },
-    },
     analyzer: {
       content: {
-        #tokenizer: 'uax_url_email',
-        tokenizer: 'ik_max_word',
+        tokenizer: 'uax_url_email',
         filter: %w(
           english_possessive_stemmer
           lowercase
@@ -38,14 +29,13 @@ class StatusesIndex < Chewy::Index
           english_stop
           english_stemmer
         ),
-        char_filter: %w(tsconvert),
       },
     },
   }
 
   # We do not use delete_if option here because it would call a method that we
   # expect to be called with crutches without crutches, causing n+1 queries
-  index_scope ::Status.unscoped.kept.without_reblogs.excluding_bots_accounts.includes(:media_attachments, :preloadable_poll)
+  index_scope ::Status.unscoped.kept.without_reblogs.includes(:media_attachments, :preloadable_poll)
 
   crutch :mentions do |collection|
     data = ::Mention.where(status_id: collection.map(&:id)).where(account: Account.local, silent: false).pluck(:status_id, :account_id)

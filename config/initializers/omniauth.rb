@@ -101,27 +101,4 @@ Devise.setup do |config|
     oidc_options[:security][:assume_email_is_verified] = ENV['OIDC_SECURITY_ASSUME_EMAIL_IS_VERIFIED'] == 'true' #OPTIONAL
     config.omniauth :openid_connect, oidc_options
   end
-  
-  # Github strategy
-  if ENV['GITHUB_OAUTH2_ENABLED'] == 'true'
-    config.omniauth :github, ENV['GITHUB_OAUTH2_KEY'], ENV['GITHUB_OAUTH2_SECRET'], scope: 'user'
-  end
-
-  # Gitlab strategy
-  if ENV['GITLAB_OAUTH2_ENABLED'] == 'true'
-    config.omniauth :gitlab, ENV['GITLAB_OAUTH2_KEY'], ENV['GITLAB_OAUTH2_SECRET'], scope: 'read_user'
-  end
-
-  # Gitee strategy
-  if ENV['GITEE_OAUTH2_ENABLED'] == 'true'
-    config.omniauth :gitee, ENV['GITEE_OAUTH2_KEY'], ENV['GITEE_OAUTH2_SECRET'], scope: 'user_info emails'
-  end
-
-  # Azure oauth2 strategy
-  if ENV['AZURE_OAUTH2_ENABLED'] == 'true'
-    config.omniauth :azure_oauth2,
-                    client_id: ENV['AZURE_OAUTH2_KEY'], client_secret: ENV['AZURE_OAUTH2_SECRET'],
-                    tenant_id: ENV['AZURE_OAUTH2_TENANT_ID'] || 'common',
-                    scope: 'email openid profile'
-  end
 end

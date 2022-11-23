@@ -45,82 +45,10 @@ class TextFormatter
 
     html = simple_format(html, {}, sanitize: false).delete("\n") if multiline?
 
-    html = append_quote_footer(html)
-
-    html.html_safe # rubocop:disable Rails/OutputSafety
-  end
-
-  def to_markdown_s
-    return ''.html_safe if text.blank?
-
-    html = Kramdown::Document.new(text, build_kramdown_options).to_mastodon
-
-    html = markdown_plain_text_handler(html)
-
-    html = append_quote_footer(html)
-
     html.html_safe # rubocop:disable Rails/OutputSafety
   end
 
   private
-
-  def build_kramdown_options
-    {
-      input: :mastodon,
-      entity_output: :as_input,
-      syntax_highlighter: 'rouge',
-      syntax_highlighter_opts: {
-        guess_lang: true,
-        # line_numbers: true, # useless!
-        # inline_theme: 'base16.light' # do not use this!
-      }
-    }
-  end
-
-  def markdown_plain_text_handler(html)
-    url_regexp = URI::Parser.new.make_regexp(%w[http https])
-    document = Nokogiri::HTML5.fragment(html, 'UTF-8')
-    document.children.each do |node|
-      next unless node.name == 'p'
-      node.children.each do |sub|
-        if sub.name == 'text'
-          # Remove the first line wrap character. Suspect this is a bug in Nokogiri.
-          content = sub.to_html
-          content = content[1..-1] if content[0] == "\n"
-
-          # link converter
-          content = content.gsub(url_regexp) { |match|
-            link_to_url({url: match})
-          }
-
-          # hashtag converter
-          content = content.gsub(Tag::HASHTAG_RE) { |_|
-            match = Regexp.last_match
-            link_to_hashtag({hashtag: match[1]})
-          }
-
-          # mention converter
-          content = content.gsub(Account::MENTION_RE) { |_|
-            match = Regexp.last_match
-            link_to_mention({screen_name: match[1]})
-          }
-
-          sub.replace(content)
-        end # if sub.type == 'text'
-      end # node.children.each do |sub|
-    end # document.children.each do |node|
-    document.to_html
-  end
-
-  def append_quote_footer(html)
-    quote = options[:quote]
-    return html if quote.nil?
-
-    url = ActivityPub::TagManager.instance.url_for(quote)
-    link = link_to_url({url: url})
-    footer = "<span class=\"quote-inline\"><br/>QT: [#{link}]</span>"
-    "#{html}#{footer}"
-  end
 
   def rewrite
     entities.sort_by! do |entity|
@@ -193,9 +121,8 @@ class TextFormatter
     url = ActivityPub::TagManager.instance.url_for(account)
     display_username = same_username_hits&.positive? || with_domains? ? account.pretty_acct : account.username
 
-    # <span class="h-card"><a href="#{h(url)}" class="u-url mention">@<span>#{h(display_username)}</span></a></span>
     <<~HTML.squish
-      <a href="#{h(url)}" class="u-url mention">@<span>#{h(display_username)}</span></a>
+      <span class="h-card"><a href="#{h(url)}" class="u-url mention">@<span>#{h(display_username)}</span></a></span>
     HTML
   end
 

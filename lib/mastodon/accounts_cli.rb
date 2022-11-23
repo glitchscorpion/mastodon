@@ -52,86 +52,7 @@ module Mastodon
       end
     end
 
-    option :target
-    desc 'aliases USERNAME', 'Create aliases for a user'
-    long_desc <<-LONG_DESC
-      Create aliases for a user.
-
-      With the --target option, create an alias for the user
-    LONG_DESC
-    def aliases(username)
-      user = Account.find_local(username)&.user
-      account = Account.find_local(username)
-
-      if user.nil?
-        say('No user with such username', :red)
-        exit(1)
-      end
-
-      if account.suspended?
-        say('User was suspended', :red)
-        exit(1)
-      end
-
-      if user.disabled?
-        say('User was disabled', :red)
-        exit(1)
-      end
-
-      the_aliases = account.aliases.build(acct: options[:target])
-
-      say(the_aliases.to_json, :blue)
-
-      if the_aliases.save
-        ActivityPub::UpdateDistributionWorker.perform_async(account.id)
-        say('OK', :green)
-      else
-        say("Unable to save #{username}", :red)
-        say(the_aliases.errors.full_messages, :red)
-      end
-    end
-
-    option :target
-    desc 'move USERNAME', 'Move a user to a different account'
-    long_desc <<-LONG_DESC
-      Move a user to a different account.
-
-      With the --target option, create an alias for the user
-    LONG_DESC
-    def move(username)
-      user = Account.find_local(username)&.user
-      account = Account.find_local(username)
-
-      if user.nil?
-        say('No user with such username', :red)
-        exit(1)
-      end
-
-      if account.suspended?
-        say('User was suspended', :red)
-        exit(1)
-      end
-
-      if user.disabled?
-        say('User was disabled', :red)
-        exit(1)
-      end
-
-      the_migration = account.migrations.build(acct: options[:target], current_password: 'by_pass', current_username: username)
-
-      say(the_migration.to_json, :blue)
-
-      if the_migration.save
-        MoveService.new.call(the_migration)
-        say('OK', :green)
-      else
-        say("Unable to save #{username}", :red)
-        say(the_migration.errors.full_messages, :red)
-      end
-    end
-
     option :email, required: true
-    option :password, default: SecureRandom.hex
     option :confirmed, type: :boolean
     option :role
     option :reattach, type: :boolean
@@ -140,8 +61,6 @@ module Mastodon
     long_desc <<-LONG_DESC
       Create a new user account with a given USERNAME and an
       e-mail address provided with --email.
-
-      With the --password option. Defaults to a random hex string.
 
       With the --confirmed option, the confirmation e-mail will
       be skipped and the account will be active straight away.
@@ -169,7 +88,7 @@ module Mastodon
       end
 
       account  = Account.new(username: username)
-      password = options[:password] || SecureRandom.hex
+      password = SecureRandom.hex
       user     = User.new(email: options[:email], password: password, agreement: true, approved: true, role_id: role_id, confirmed_at: options[:confirmed] ? Time.now.utc : nil, bypass_invite_request_check: true)
 
       if options[:reattach]
@@ -207,6 +126,7 @@ module Mastodon
     end
 
     option :role
+    option :remove_role, type: :boolean
     option :email
     option :confirm, type: :boolean
     option :enable, type: :boolean
@@ -218,7 +138,8 @@ module Mastodon
     long_desc <<-LONG_DESC
       Modify a user account.
 
-      With the --role option, update the user's role.
+      With the --role option, update the user's role. To remove the user's
+      role, i.e. demote to normal user, use --remove-role.
 
       With the --email option, update the user's e-mail address. With
       the --confirm option, mark the user's e-mail as confirmed.
@@ -252,6 +173,8 @@ module Mastodon
         end
 
         user.role_id = role.id
+      elsif options[:remove_role]
+        user.role_id = nil
       end
 
       password = SecureRandom.hex if options[:reset_password]

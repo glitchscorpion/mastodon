@@ -76,7 +76,6 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     @silenced_account_ids = []
     @params               = {}
 
-    process_quote
     process_status_params
     process_tags
     process_audience
@@ -125,9 +124,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
         visibility: @status_parser.visibility,
         thread: replied_to_status,
         conversation: conversation_from_uri(@object['conversation']),
-        media_attachment_ids: process_attachments.take(9).map(&:id),
+        media_attachment_ids: process_attachments.take(4).map(&:id),
         poll: process_poll,
-        quote: quote,
       }
     end
   end
@@ -156,7 +154,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       # If there is at least one silent mention, then the status can be considered
       # as a limited-audience status, and not strictly a direct message, but only
       # if we considered a direct message in the first place
-      @params[:visibility] = :limited if @params[:visibility] == :direct
+      @params[:visibility] = :limited if @params[:visibility] == :direct && !@object['directMessage']
     end
 
     # Accounts that are tagged but are not in the audience are not
@@ -168,7 +166,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     return if @status.mentions.find_by(account_id: @options[:delivered_to_account_id])
 
     @status.mentions.create(account: delivered_to_account, silent: true)
-    @status.update(visibility: :limited) if @status.direct_visibility?
+    @status.update(visibility: :limited) if @status.direct_visibility? && !@object['directMessage']
 
     return unless delivered_to_account.following?(@account)
 
@@ -259,7 +257,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     as_array(@object['attachment']).each do |attachment|
       media_attachment_parser = ActivityPub::Parser::MediaAttachmentParser.new(attachment)
 
-      next if media_attachment_parser.remote_url.blank? || media_attachments.size >= 9
+      next if media_attachment_parser.remote_url.blank? || media_attachments.size >= 4
 
       begin
         media_attachment = MediaAttachment.create(
@@ -427,25 +425,5 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   rescue ActiveRecord::StaleObjectError
     poll.reload
     retry
-  end
-
-  def quote
-    @quote ||= quote_from_url(@object['quoteUrl'] || @object['_misskey_quote'])
-  end
-
-  def process_quote
-    if quote.nil? && md = @object['content']&.match(/QT:\s*\[<a href=\"([^\"]+).*?\]/)
-      @quote = quote_from_url(md[1])
-      @object['content'] = @object['content'].sub(/QT:\s*\[.*?\]/, '<span class="quote-inline"><br/>\1</span>')
-    end
-  end
-
-  def quote_from_url(url)
-    return nil if url.nil?
-
-    quote = ResolveURLService.new.call(url)
-    status_from_uri(quote.uri) if quote
-  rescue
-    nil
   end
 end

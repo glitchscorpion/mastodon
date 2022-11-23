@@ -26,18 +26,6 @@ class HtmlAwareFormatter
     ''.html_safe
   end
 
-  def to_markdown_s
-    return ''.html_safe if text.blank?
-
-    if local?
-      linkify_markdown
-    else
-      reformat.html_safe # rubocop:disable Rails/OutputSafety
-    end
-  rescue ArgumentError
-    ''.html_safe
-  end
-
   private
 
   def reformat
@@ -45,10 +33,10 @@ class HtmlAwareFormatter
   end
 
   def linkify
-    TextFormatter.new(text, options).to_s
-  end
-
-  def linkify_markdown
-    TextFormatter.new(text, options).to_markdown_s
+    if %w(text/markdown text/html).include?(@options[:content_type])
+      AdvancedTextFormatter.new(text, options).to_s
+    else
+      TextFormatter.new(text, options).to_s
+    end
   end
 end

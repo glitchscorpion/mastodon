@@ -1,6 +1,4 @@
-.table,
-.status__content table,
-.reply-indicator__content table {
+.table {
   width: 100%;
   max-width: 100%;
   border-spacing: 0;
@@ -180,6 +178,9 @@ a.table-action-link {
   }
 
   &__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     border: 1px solid darken($ui-base-color, 8%);
     background: $ui-base-color;
     border-radius: 4px 0 0;

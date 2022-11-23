@@ -2,14 +2,13 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Immutable from 'immutable';
 import ImmutablePropTypes from 'react-immutable-proptypes';
-import { FormattedMessage, defineMessages, injectIntl } from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import punycode from 'punycode';
 import classnames from 'classnames';
 import Icon from 'mastodon/components/icon';
 import { useBlurhash } from 'mastodon/initial_state';
 import Blurhash from 'mastodon/components/blurhash';
 import { debounce } from 'lodash';
-import IconButton from 'mastodon/components/icon_button';
 
 const IDNA_PREFIX = 'xn--';
 
@@ -38,16 +37,28 @@ const trim = (text, len) => {
 
 const domParser = new DOMParser();
 
-const messages = defineMessages({
-  fullscreen: { id: 'status.fullscreen', defaultMessage: 'Expand to full screen view' },
-});
+const addAutoPlay = html => {
+  const document = domParser.parseFromString(html, 'text/html').documentElement;
+  const iframe = document.querySelector('iframe');
 
-export default @injectIntl
-class Card extends React.PureComponent {
+  if (iframe) {
+    if (iframe.src.indexOf('?') !== -1) {
+      iframe.src += '&';
+    } else {
+      iframe.src += '?';
+    }
 
-  static contextTypes = {
-    router: PropTypes.object,
-  };
+    iframe.src += 'autoplay=1&auto_play=1';
+
+    // DOM parser creates html/body elements around original HTML fragment,
+    // so we need to get innerHTML out of the body and not the entire document
+    return document.querySelector('body').innerHTML;
+  }
+
+  return html;
+};
+
+export default class Card extends React.PureComponent {
 
   static propTypes = {
     card: ImmutablePropTypes.map,
@@ -57,8 +68,6 @@ class Card extends React.PureComponent {
     defaultWidth: PropTypes.number,
     cacheWidth: PropTypes.func,
     sensitive: PropTypes.bool,
-    intl: PropTypes.object.isRequired,
-    quote: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -71,7 +80,6 @@ class Card extends React.PureComponent {
     previewLoaded: false,
     embedded: false,
     revealed: !this.props.sensitive,
-    isIframe: false,
   };
 
   componentWillReceiveProps (nextProps) {
@@ -158,79 +166,25 @@ class Card extends React.PureComponent {
     this.setState({ revealed: true });
   }
 
-  addAutoPlay = html => {
-    const document = domParser.parseFromString(html, 'text/html').documentElement;
-    const iframe = document.querySelector('iframe');
-
-    if (iframe) {
-      this.setState({ isIframe: true });
-
-      if (iframe.src.indexOf('?') !== -1) {
-        iframe.src += '&';
-      } else {
-        iframe.src += '?';
-      }
-
-      iframe.src += 'autoplay=1&auto_play=1';
-
-      // DOM parser creates html/body elements around original HTML fragment,
-      // so we need to get innerHTML out of the body and not the entire document
-      return document.querySelector('body').innerHTML;
-    }
-
-    return html;
-  }
-
-  handleIframeFullscreen = () => {
-    const iframe = this.node;
-    if (iframe.requestFullscreen) {
-      iframe.requestFullscreen();
-    } else if (iframe.webkitRequestFullscreen) {
-      iframe.webkitRequestFullscreen();
-    } else if (iframe.mozRequestFullScreen) {
-      iframe.mozRequestFullScreen();
-    } else if (iframe.msRequestFullscreen) {
-      iframe.msRequestFullscreen();
-    }
-  }
-
   renderVideo () {
-    const { card, intl }  = this.props;
-    const content   = { __html: this.addAutoPlay(card.get('html')) };
+    const { card }  = this.props;
+    const content   = { __html: addAutoPlay(card.get('html')) };
     const { width } = this.state;
     const ratio     = card.get('width') / card.get('height');
     const height    = width / ratio;
 
-    const fullscreenEnabled = (document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled) ? true : false;
-    const isIframe = this.state.isIframe;
-
     return (
-      <div className='status-card__image status-card-video__container'>
-        <div
-          ref={this.setRef}
-          className='status-card__image status-card-video'
-          dangerouslySetInnerHTML={content}
-          style={{ height }}
-        />
-        {fullscreenEnabled && isIframe ? (
-          <IconButton
-            className={'fullscreen-iframe-button'}
-            title={intl.formatMessage(messages.fullscreen)}
-            icon={'expand-wide:fad'}
-            onClick={this.handleIframeFullscreen}
-            size={18}
-            style={{
-              width: 'unset',
-              height: 'unset',
-            }}
-          />
-        ) : null}
-      </div>
+      <div
+        ref={this.setRef}
+        className='status-card__image status-card-video'
+        dangerouslySetInnerHTML={content}
+        style={{ height }}
+      />
     );
   }
 
   render () {
-    const { card, maxDescription, compact, quote } = this.props;
+    const { card, maxDescription, compact } = this.props;
     const { width, embedded, revealed } = this.state;
 
     if (card === null) {
@@ -243,11 +197,7 @@ class Card extends React.PureComponent {
     const className   = classnames('status-card', { horizontal, compact, interactive });
     const title       = interactive ? <a className='status-card__title' href={card.get('url')} title={card.get('title')} rel='noopener noreferrer' target='_blank'><strong>{card.get('title')}</strong></a> : <strong className='status-card__title' title={card.get('title')}>{card.get('title')}</strong>;
     const ratio       = card.get('width') / card.get('height');
-    let height      = (compact && !embedded) ? (width / (16 / 9)) : (width / ratio);
-
-    if (quote && height) {
-      height /= 1;
-    }
+    const height      = (compact && !embedded) ? (width / (16 / 9)) : (width / ratio);
 
     const description = (
       <div className='status-card__content'>
@@ -297,7 +247,7 @@ class Card extends React.PureComponent {
             {revealed && (
               <div className='status-card__actions'>
                 <div>
-                  <button onClick={this.handleEmbedClick}><Icon id={iconVariant} /></button>
+                  <button type='button' onClick={this.handleEmbedClick}><Icon id={iconVariant} /></button>
                   {horizontal && <a href={card.get('url')} target='_blank' rel='noopener noreferrer'><Icon id='external-link' /></a>}
                 </div>
               </div>

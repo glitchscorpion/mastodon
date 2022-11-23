@@ -120,12 +120,31 @@ RSpec.describe FeedManager do
         expect(FeedManager.instance.filter?(:home, status, bob)).to be true
       end
 
+      it 'returns true for status by followee mentioning muted account' do
+        bob.mute!(jeff)
+        bob.follow!(alice)
+        status = PostStatusService.new.call(alice, text: 'Hey @jeff')
+        expect(FeedManager.instance.filter?(:home, status, bob)).to be true
+      end
+
       it 'returns true for reblog of a personally blocked domain' do
         alice.block_domain!('example.com')
         alice.follow!(jeff)
         status = Fabricate(:status, text: 'Hello world', account: bob)
         reblog = Fabricate(:status, reblog: status, account: jeff)
         expect(FeedManager.instance.filter?(:home, reblog, alice)).to be true
+      end
+
+      it 'returns true for German post when follow is set to English only' do
+        alice.follow!(bob, languages: %w(en))
+        status = Fabricate(:status, text: 'Hallo Welt', account: bob, language: 'de')
+        expect(FeedManager.instance.filter?(:home, status, alice)).to be true
+      end
+
+      it 'returns false for German post when follow is set to German' do
+        alice.follow!(bob, languages: %w(de))
+        status = Fabricate(:status, text: 'Hallo Welt', account: bob, language: 'de')
+        expect(FeedManager.instance.filter?(:home, status, alice)).to be false
       end
     end
 

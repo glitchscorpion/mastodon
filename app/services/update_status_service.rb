@@ -15,6 +15,7 @@ class UpdateStatusService < BaseService
   # @option options [String] :spoiler_text
   # @option options [Boolean] :sensitive
   # @option options [String] :language
+  # @option options [String] :content_type
   def call(status, account_id, options = {})
     @status                    = status
     @options                   = options
@@ -60,9 +61,9 @@ class UpdateStatusService < BaseService
   def validate_media!
     return [] if @options[:media_ids].blank? || !@options[:media_ids].is_a?(Enumerable)
 
-    raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many_nine') if @options[:media_ids].size > 9 || @options[:poll].present?
+    raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many') if @options[:media_ids].size > 4 || @options[:poll].present?
 
-    media_attachments = @status.account.media_attachments.where(status_id: [nil, @status.id]).where(scheduled_status_id: nil).where(id: @options[:media_ids].take(9).map(&:to_i)).to_a
+    media_attachments = @status.account.media_attachments.where(status_id: [nil, @status.id]).where(scheduled_status_id: nil).where(id: @options[:media_ids].take(4).map(&:to_i)).to_a
 
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.images_and_video') if media_attachments.size > 1 && media_attachments.find(&:audio_or_video?)
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_ready') if media_attachments.any?(&:not_processed?)
@@ -103,8 +104,7 @@ class UpdateStatusService < BaseService
     @status.spoiler_text = @options[:spoiler_text] || '' if @options.key?(:spoiler_text)
     @status.sensitive    = @options[:sensitive] || @options[:spoiler_text].present? if @options.key?(:sensitive) || @options.key?(:spoiler_text)
     @status.language     = valid_locale_cascade(@options[:language], @status.language, @status.account.user&.preferred_posting_language, I18n.default_locale)
-    @status.content_type = @options[:content_type] || 'text/plain'
-    @status.local_only   = !!@options[:local_only]
+    @status.content_type = @options[:content_type] || @status.content_type
 
     # We raise here to rollback the entire transaction
     raise NoChangesSubmittedError unless significant_changes?
@@ -127,7 +127,7 @@ class UpdateStatusService < BaseService
 
   def broadcast_updates!
     DistributionWorker.perform_async(@status.id, { 'update' => true })
-    ActivityPub::StatusUpdateDistributionWorker.perform_async(@status.id)
+    ActivityPub::StatusUpdateDistributionWorker.perform_async(@status.id) unless @status.local_only?
   end
 
   def queue_poll_notifications!

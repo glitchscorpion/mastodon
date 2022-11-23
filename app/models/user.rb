@@ -131,13 +131,11 @@ class User < ApplicationRecord
 
   has_many :session_activations, dependent: :destroy
 
-  delegate :auto_play_gif, :default_sensitive, :unfollow_modal, :boost_modal, :delete_modal,
-           :reduce_motion, :system_font_ui, :noindex, :theme, :display_media,
+  delegate :auto_play_gif, :default_sensitive, :unfollow_modal, :boost_modal, :favourite_modal, :delete_modal,
+           :reduce_motion, :system_font_ui, :noindex, :flavour, :skin, :display_media, :hide_followers_count,
            :expand_spoilers, :default_language, :aggregate_reblogs, :show_application,
            :advanced_layout, :use_blurhash, :use_pending_items, :trends, :crop_images,
-           :default_federation, :default_content_type, :enable_snowfall, :custom_css, :icon_pack,
-           :enable_noto_serif,
-           :disable_swiping, :always_send_emails,
+           :disable_swiping, :always_send_emails, :default_content_type, :system_emoji_font,
            to: :settings, prefix: :setting, allow_nil: false
 
   delegate :can?, to: :role
@@ -239,7 +237,12 @@ class User < ApplicationRecord
   end
 
   def functional?
-    confirmed? && approved? && !disabled? && !account.suspended? && !account.memorial? && account.moved_to_account_id.nil?
+
+    functional_or_moved?
+  end
+
+  def functional_or_moved?
+    confirmed? && approved? && !disabled? && !account.suspended? && !account.memorial?
   end
 
   def unconfirmed?
@@ -283,8 +286,12 @@ class User < ApplicationRecord
     save!
   end
 
+  def prefers_noindex?
+    setting_noindex
+  end
+
   def preferred_posting_language
-    valid_locale_cascade(settings.default_language, locale)
+    valid_locale_cascade(settings.default_language, locale, I18n.locale)
   end
 
   def setting_default_privacy
@@ -303,8 +310,16 @@ class User < ApplicationRecord
     settings.notification_emails['appeal']
   end
 
-  def allows_trends_review_emails?
+  def allows_trending_tags_review_emails?
     settings.notification_emails['trending_tag']
+  end
+
+  def allows_trending_links_review_emails?
+    settings.notification_emails['trending_link']
+  end
+
+  def allows_trending_statuses_review_emails?
+    settings.notification_emails['trending_status']
   end
 
   def aggregates_reblogs?
@@ -398,13 +413,6 @@ class User < ApplicationRecord
     setting_display_media == 'hide_all'
   end
 
-  def prepare_for_new_auth_login_user!(auth_provider)
-    user_invite_request = UserInviteRequest.new({ user_id: id, text: "This account was authorized by #{auth_provider}.", })
-    user_invite_request.save!
-
-    prepare_new_user!
-  end
-
   protected
 
   def send_devise_notification(notification, *args, **kwargs)
@@ -483,11 +491,6 @@ class User < ApplicationRecord
   end
 
   def prepare_new_user!
-    # for these users, they shall not be required to input profile again
-    account.update!(actor_type: 'Person')
-    account.update!(fields: [])
-    account.update!(discoverable: false)
-    
     BootstrapTimelineWorker.perform_async(account_id)
     ActivityTracker.increment('activity:accounts:local')
     UserMailer.welcome(self).deliver_later

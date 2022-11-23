@@ -14,6 +14,7 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   attribute :suspended, if: :suspended?
   attribute :silenced, key: :limited, if: :silenced?
+  attribute :noindex, if: :local?
 
   class FieldSerializer < ActiveModel::Serializer
     include FormattingHelper
@@ -67,6 +68,10 @@ class REST::AccountSerializer < ActiveModel::Serializer
     object.last_status_at&.to_date&.iso8601
   end
 
+  def followers_count
+    (Setting.hide_followers_count || object.user&.setting_hide_followers_count) ? -1 : object.followers_count
+  end
+
   def display_name
     object.suspended? ? '' : object.display_name
   end
@@ -103,7 +108,11 @@ class REST::AccountSerializer < ActiveModel::Serializer
     object.silenced?
   end
 
-  delegate :suspended?, :silenced?, to: :object
+  def noindex
+    object.user_prefers_noindex?
+  end
+
+  delegate :suspended?, :silenced?, :local?, to: :object
 
   def moved_and_not_nested?
     object.moved? && object.moved_to_account.moved_to_account_id.nil?

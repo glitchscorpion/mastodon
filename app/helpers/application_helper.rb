@@ -87,10 +87,6 @@ module ApplicationHelper
     link_to label, omniauth_authorize_path(:user, provider), class: "button button-#{provider}", method: :post
   end
 
-  def open_deletion?
-    Setting.open_deletion
-  end
-
   def locale_direction
     if RTL_LOCALES.include?(I18n.locale)
       'rtl'
@@ -168,44 +164,12 @@ module ApplicationHelper
 
   def body_classes
     output = (@body_classes || '').split(' ')
-    output << "theme-#{current_theme.parameterize}"
+    output << "flavour-#{current_flavour.parameterize}"
+    output << "skin-#{current_skin.parameterize}"
     output << 'system-font' if current_account&.user&.setting_system_font_ui
     output << (current_account&.user&.setting_reduce_motion ? 'reduce-motion' : 'no-reduce-motion')
     output << 'rtl' if locale_direction == 'rtl'
-    if user_signed_in?
-      unless (not current_user.setting_enable_noto_serif) or current_user.setting_system_font_ui
-        if ['zh-HK', 'zh-TW'].include? I18n.locale.to_s
-          output << 'noto-serif-tc'
-        elsif ['ja'].include? I18n.locale.to_s
-          output << 'noto-serif-jp'
-        else
-          output << 'noto-serif-sc'
-        end
-      end
-      icon_pack = current_user.setting_icon_pack
-      output << "icon-pack-#{icon_pack.empty? ? 'default': icon_pack}"
-    end
     output.reject(&:blank?).join(' ')
-  end
-
-  def google_fonts_base_url
-    "https://#{ENV['FONTS_GOOGLEAPIS_PROXY_HOST'] || 'fonts.googleapis.com'}"
-  end
-
-  def zh_hans_font_url
-    "#{google_fonts_base_url}/css2?family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&display=swap"
-  end
-
-  def zh_hant_font_url
-    "#{google_fonts_base_url}/css2?family=Noto+Serif+TC:wght@200;300;400;500;600;700;900&display=swap"
-  end
-
-  def ja_font_url
-    "#{google_fonts_base_url}/css2?family=Noto+Serif+JP:wght@200;300;400;500;600;700;900&display=swap"
-  end
-
-  def forest_icon_pack_url
-    '/plugins/icon-forest/iconfont.css?t=1656835877240'
   end
 
   def cdn_host
@@ -231,10 +195,7 @@ module ApplicationHelper
 
   def render_initial_state
     state_params = {
-      settings: {
-        known_fediverse: Setting.show_known_fediverse_at_about_page,
-      },
-
+      settings: {},
       text: [params[:title], params[:text], params[:url]].compact.join(' '),
     }
 
@@ -243,12 +204,21 @@ module ApplicationHelper
     permit_visibilities.shift(permit_visibilities.index(default_privacy) + 1) if default_privacy.present?
     state_params[:visibility] = params[:visibility] if permit_visibilities.include? params[:visibility]
 
-    if user_signed_in?
+    if user_signed_in? && current_user.functional?
       state_params[:settings]          = state_params[:settings].merge(Web::Setting.find_by(user: current_user)&.data || {})
       state_params[:push_subscription] = current_account.user.web_push_subscription(current_session)
       state_params[:current_account]   = current_account
       state_params[:token]             = current_session.token
       state_params[:admin]             = Account.find_local(Setting.site_contact_username.strip.gsub(/\A@/, ''))
+    end
+
+    if user_signed_in? && !current_user.functional?
+      state_params[:disabled_account] = current_account
+      state_params[:moved_to_account] = current_account.moved_to_account
+    end
+
+    if single_user_mode?
+      state_params[:owner] = Account.local.without_suspended.where('id > 0').first
     end
 
     json = ActiveModelSerializers::SerializableResource.new(InitialStatePresenter.new(state_params), serializer: InitialStateSerializer).to_json
