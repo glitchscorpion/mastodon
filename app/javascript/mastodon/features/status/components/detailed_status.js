@@ -40,6 +40,7 @@ class DetailedStatus extends ImmutablePureComponent {
     onOpenMediaQuote: PropTypes.func.isRequired,
     onOpenVideoQuote: PropTypes.func.isRequired,
     onToggleHidden: PropTypes.func.isRequired,
+    onTranslate: PropTypes.func.isRequired,
     measureHeight: PropTypes.bool,
     onHeightChange: PropTypes.func,
     domain: PropTypes.string.isRequired,
@@ -122,17 +123,9 @@ class DetailedStatus extends ImmutablePureComponent {
     window.open(href, 'mastodon-intent', 'width=445,height=600,resizable=no,menubar=no,status=no,scrollbars=yes');
   }
 
-  handleExpandedQuoteToggle = () => {
-    this.props.onQuoteToggleHidden(this.props.status);
-  }
-
-  handleQuoteClick = () => {
-    if (!this.context.router) {
-      return;
-    }
-
-    const { status } = this.props;
-    this.context.router.history.push(`/statuses/${status.getIn(['quote', 'id'])}`);
+  handleTranslate = () => {
+    const { onTranslate, status } = this.props;
+    onTranslate(status);
   }
 
   render () {
@@ -231,10 +224,9 @@ class DetailedStatus extends ImmutablePureComponent {
 
     if (status.get('media_attachments').size > 0) {
       if (pictureInPicture.get('inUse')) {
-        media = <PictureInPicturePlaceholder width={this.props.cachedMediaWidth} />;
-      } else if (this.props.muted) {
-        media = <AttachmentList compact media={status.get('media_attachments')} />;
-      } else if (status.getIn(['media_attachments', 0, 'type']) === 'audio') {
+      media = <PictureInPicturePlaceholder />;
+    } else if (status.get('media_attachments').size > 0) {
+      if (status.getIn(['media_attachments', 0, 'type']) === 'audio') {
         const attachment = status.getIn(['media_attachments', 0]);
 
         media = (
@@ -367,20 +359,25 @@ class DetailedStatus extends ImmutablePureComponent {
     return (
       <div style={outerStyle}>
         <div ref={this.setRef} className={classNames('detailed-status', `detailed-status-${status.get('visibility')}`, { compact })}>
-          <a href={status.getIn(['account', 'url'])} onClick={this.handleAccountClick} className='detailed-status__display-name'>
-            <div className='detailed-status__display-avatar'><Avatar account={status.get('account')} size={48} /></div>
+          <a href={`/@${status.getIn(['account', 'acct'])}`} onClick={this.handleAccountClick} className='detailed-status__display-name'>
+            <div className='detailed-status__display-avatar'><Avatar account={status.get('account')} size={46} /></div>
             <DisplayName account={status.get('account')} localDomain={this.props.domain} />
           </a>
 
-          <StatusContent status={status} expanded={!status.get('hidden')} onExpandedToggle={this.handleExpandedToggle} />
+          <StatusContent
+            status={status}
+            expanded={!status.get('hidden')}
+            onExpandedToggle={this.handleExpandedToggle}
+            onTranslate={this.handleTranslate}
+          />
 
           {quote}
           {media}
 
           <div className='detailed-status__meta'>
-            <a className='detailed-status__datetime' href={status.get('url')} target='_blank' rel='noopener noreferrer'>
+            <a className='detailed-status__datetime' href={`/@${status.getIn(['account', 'acct'])}\/${status.get('id')}`} target='_blank' rel='noopener noreferrer'>
               <FormattedDate value={new Date(status.get('created_at'))} hour12={false} year='numeric' month='short' day='2-digit' hour='2-digit' minute='2-digit' />
-            </a>{edited}{visibilityLink}{applicationLink}{reblogLink} · {favouriteLink}{localOnly}
+            </a>{edited}{visibilityLink}{applicationLink}{reblogLink} · {favouriteLink}
           </div>
         </div>
       </div>

@@ -1,8 +1,9 @@
 import React from 'react';
-import Column from '../ui/components/column';
+import Column from 'mastodon/components/column';
+import ColumnHeader from 'mastodon/components/column_header';
 import ColumnLink from '../ui/components/column_link';
 import ColumnSubheading from '../ui/components/column_subheading';
-import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
+import { defineMessages, injectIntl } from 'react-intl';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
@@ -14,6 +15,7 @@ import NavigationContainer from '../compose/containers/navigation_container';
 import Icon from 'mastodon/components/icon';
 import LinkFooter from 'mastodon/features/ui/components/link_footer';
 import TrendsContainer from './containers/trends_container';
+import { Helmet } from 'react-helmet';
 
 const messages = defineMessages({
   home_timeline: { id: 'tabs_bar.home', defaultMessage: 'Home' },
@@ -66,12 +68,12 @@ class GettingStarted extends ImmutablePureComponent {
 
   static contextTypes = {
     router: PropTypes.object.isRequired,
+    identity: PropTypes.object,
   };
 
   static propTypes = {
     intl: PropTypes.object.isRequired,
-    myAccount: ImmutablePropTypes.map.isRequired,
-    columns: ImmutablePropTypes.list,
+    myAccount: ImmutablePropTypes.map,
     multiColumn: PropTypes.bool,
     fetchFollowRequests: PropTypes.func.isRequired,
     unreadFollowRequests: PropTypes.number,
@@ -79,10 +81,10 @@ class GettingStarted extends ImmutablePureComponent {
   };
 
   componentDidMount () {
-    const { fetchFollowRequests, multiColumn } = this.props;
+    const { fetchFollowRequests } = this.props;
+    const { signedIn } = this.context.identity;
 
-    if (!multiColumn && window.innerWidth >= NAVIGATION_PANEL_BREAKPOINT) {
-      this.context.router.history.replace('/home');
+    if (!signedIn) {
       return;
     }
 
@@ -90,7 +92,8 @@ class GettingStarted extends ImmutablePureComponent {
   }
 
   render () {
-    const { intl, myAccount, columns, multiColumn, unreadFollowRequests } = this.props;
+    const { intl, myAccount, multiColumn, unreadFollowRequests } = this.props;
+    const { signedIn } = this.context.identity;
 
     const navItems = [];
     let height = (multiColumn) ? 0 : 60;
@@ -102,10 +105,11 @@ class GettingStarted extends ImmutablePureComponent {
       height += 34;
     }
 
+    if (showTrends) {
     navItems.push(
       <ColumnLink key='explore' icon='hashtag' text={intl.formatMessage(messages.explore)} to='/explore' />,
     );
-    height += 48;
+    }
 
     if (multiColumn) {
       navItems.push(
@@ -113,8 +117,7 @@ class GettingStarted extends ImmutablePureComponent {
         <ColumnLink key='public_timeline' icon='globe' text={intl.formatMessage(messages.public_timeline)} to='/public' />,
       );
 
-      height += 48*2;
-
+    if (signedIn) {
       navItems.push(
         <ColumnSubheading key='header-personal' text={intl.formatMessage(messages.personal)} />,
       );
@@ -153,29 +156,25 @@ class GettingStarted extends ImmutablePureComponent {
     }
 
     return (
-      <Column bindToDocument={!multiColumn} label={intl.formatMessage(messages.menu)}>
-        {multiColumn && <div className='column-header__wrapper'>
-          <h1 className='column-header'>
-            <button>
-              <Icon id='bars' className='column-header__icon' fixedWidth />
-              <FormattedMessage id='getting_started.heading' defaultMessage='Getting started' />
-            </button>
-          </h1>
-        </div>}
+      <Column>
+        {(signedIn && !multiColumn) ? <NavigationContainer /> : <ColumnHeader title={intl.formatMessage(messages.menu)} icon='bars' multiColumn={multiColumn} />}
 
-        <div className='getting-started'>
-          <div className='getting-started__wrapper' style={{ height }}>
-            {!multiColumn && <NavigationContainer />}
+        <div className='getting-started scrollable scrollable--flex'>
+          <div className='getting-started__wrapper'>
             {navItems}
           </div>
 
           {!multiColumn && <div className='flex-spacer' />}
 
-          {multiColumn && showTrends && <TrendsContainer />}
-
-          <LinkFooter withHotkeys={multiColumn} />
+          <LinkFooter />
         </div>
 
+        {(multiColumn && showTrends) && <TrendsContainer />}
+
+        <Helmet>
+          <title>{intl.formatMessage(messages.menu)}</title>
+          <meta name='robots' content='noindex' />
+        </Helmet>
       </Column>
     );
   }
