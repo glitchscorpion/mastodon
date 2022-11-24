@@ -5,7 +5,6 @@ class InitialStateSerializer < ActiveModel::Serializer
 
   attributes :meta, :compose, :accounts,
              :media_attachments, :settings,
-             :max_toot_chars,
              :languages
 
   has_one :push_subscription, serializer: REST::WebPushSubscriptionSerializer
@@ -77,8 +76,6 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:default_privacy]   = object.visibility || object.current_account.user.setting_default_privacy
       store[:default_sensitive] = object.current_account.user.setting_default_sensitive
       store[:default_language]  = object.current_account.user.preferred_posting_language
-      store[:default_federation] = object.current_account.user.setting_default_federation
-      store[:default_content_type] = object.current_account.user.setting_default_content_type
     end
 
     store[:text] = object.text if object.text
