@@ -22,40 +22,7 @@ en:
     federation_hint_html: With an account on %{instance} you'll be able to follow people on any Mastodon server and beyond.
     get_apps: Try a mobile app
     hosted_on: Mastodon hosted on %{domain}
-    instance_actor_flash: |
-      This account is a virtual actor used to represent the server itself and not any individual user.
-      It is used for federation purposes and should not be blocked unless you want to block the whole instance, in which case you should use a domain block.
-    learn_more: Learn more
-    logged_in_as_html: You are currently logged in as %{username}.
-    logout_before_registering: You are already logged in.
-    privacy_policy: Privacy policy
-    rules: Server rules
-    rules_html: 'Below is a summary of rules you need to follow if you want to have an account on this server of Mastodon:'
-    see_whats_happening: See what's happening
-    server_stats: 'Server stats:'
-    source_code: Source code
-    status_count_after:
-      one: post
-      other: posts
-    status_count_before: Who published
-    tagline: Decentralized social network
-    terms: Terms of service
-    unavailable_content: Moderated servers
-    unavailable_content_description:
-      domain: Server
-      reason: Reason
-      rejecting_media: 'Media files from these servers will not be processed or stored, and no thumbnails will be displayed, requiring manual click-through to the original file:'
-      rejecting_media_title: Filtered media
-      silenced: 'Posts from these servers will be hidden in public timelines and conversations, and no notifications will be generated from their users interactions, unless you are following them:'
-      silenced_title: Limited servers
-      suspended: 'No data from these servers will be processed, stored or exchanged, making any interaction or communication with users from these servers impossible:'
-      suspended_title: Suspended servers
-    unavailable_content_html: Mastodon generally allows you to view content from and interact with users from any other server in the fediverse. These are the exceptions that have been made on this particular server.
-    user_count_after:
-      one: user
-      other: users
-    user_count_before: Home to
-    what_is_mastodon: What is Mastodon?
+    title: About
   accounts:
     choices_html: "%{name}'s choices:"
     endorsements_hint: You can endorse people you follow from the web interface, and they will show up here.
@@ -273,6 +240,7 @@ en:
         reject_user: Reject User
         remove_avatar_user: Remove Avatar
         reopen_report: Reopen Report
+        resend_user: Resend Confirmation Mail
         reset_password_user: Reset Password
         resolve_report: Resolve Report
         sensitive_account: Force-Sensitive Account
@@ -331,6 +299,7 @@ en:
         reject_user_html: "%{name} rejected sign-up from %{target}"
         remove_avatar_user_html: "%{name} removed %{target}'s avatar"
         reopen_report_html: "%{name} reopened report %{target}"
+        resend_user_html: "%{name} resent confirmation e-mail for %{target}"
         reset_password_user_html: "%{name} reset password of user %{target}"
         resolve_report_html: "%{name} resolved report %{target}"
         sensitive_account_html: "%{name} marked %{target}'s media as sensitive"
@@ -347,6 +316,7 @@ en:
         update_ip_block_html: "%{name} changed rule for IP %{target}"
         update_status_html: "%{name} updated post by %{target}"
         update_user_role_html: "%{name} changed %{target} role"
+      deleted_account: deleted account
       empty: No logs found.
       filter_by_action: Filter by action
       filter_by_user: Filter by user
@@ -390,6 +360,7 @@ en:
       listed: Listed
       new:
         title: Add new custom emoji
+      no_emoji_selected: No emojis were changed as none were selected
       not_permitted: You are not permitted to perform this action
       overwrite: Overwrite
       shortcode: Shortcode
@@ -435,6 +406,8 @@ en:
       add_new: Allow federation with domain
       created_msg: Domain has been successfully allowed for federation
       destroyed_msg: Domain has been disallowed from federation
+      export: Export
+      import: Import
       undo: Disallow federation with domain
     domain_blocks:
       add_new: Add new domain block
@@ -444,15 +417,19 @@ en:
       edit: Edit domain block
       existing_domain_block: You have already imposed stricter limits on %{name}.
       existing_domain_block_html: You have already imposed stricter limits on %{name}, you need to <a href="%{unblock_url}">unblock it</a> first.
+      export: Export
+      import: Import
       new:
         create: Create block
         hint: The domain block will not prevent creation of account entries in the database, but will retroactively and automatically apply specific moderation methods on those accounts.
         severity:
-          desc_html: "<strong>Silence</strong> will make the account's posts invisible to anyone who isn't following them. <strong>Suspend</strong> will remove all of the account's content, media, and profile data. Use <strong>None</strong> if you just want to reject media files."
+          desc_html: "<strong>Limit</strong> will make posts from accounts at this domain invisible to anyone who isn't following them. <strong>Suspend</strong> will remove all content, media, and profile data for this domain's accounts from your server. Use <strong>None</strong> if you just want to reject media files."
           noop: None
-          silence: Silence
+          silence: Limit
           suspend: Suspend
         title: New domain block
+      no_domain_block_selected: No domain blocks were changed as none were selected
+      not_permitted: You are not permitted to perform this action
       obfuscate: Obfuscate domain name
       obfuscate_hint: Partially obfuscate the domain name in the list if advertising the list of domain limitations is enabled
       private_comment: Private comment
@@ -484,6 +461,20 @@ en:
       resolved_dns_records_hint_html: The domain name resolves to the following MX domains, which are ultimately responsible for accepting e-mail. Blocking an MX domain will block sign-ups from any e-mail address which uses the same MX domain, even if the visible domain name is different. <strong>Be careful not to block major e-mail providers.</strong>
       resolved_through_html: Resolved through %{domain}
       title: Blocked e-mail domains
+    export_domain_allows:
+      new:
+        title: Import domain allows
+      no_file: No file selected
+    export_domain_blocks:
+      import:
+        description_html: You are about to import a list of domain blocks. Please review this list very carefully, especially if you have not authored this list yourself.
+        existing_relationships_warning: Existing follow relationships
+        private_comment_description_html: 'To help you track where imported blocks come from, imported blocks will be created with the following private comment: <q>%{comment}</q>'
+        private_comment_template: Imported from %{source} on %{date}
+        title: Import domain blocks
+      new:
+        title: Import domain blocks
+      no_file: No file selected
     follow_recommendations:
       description_html: "<strong>Follow recommendations help new users quickly find interesting content</strong>. When a user has not interacted with others enough to form personalized follow recommendations, these accounts are recommended instead. They are re-calculated on a daily basis from a mix of accounts with the highest recent engagements and highest local follower counts for a given language."
       language: For language
@@ -670,7 +661,7 @@ en:
         other: "%{count} users"
       categories:
         administration: Administration
-        devops: Devops
+        devops: DevOps
         invites: Invites
         moderation: Moderation
         special: Special
@@ -721,7 +712,7 @@ en:
         view_audit_log_description: Allows users to see a history of administrative actions on the server
         view_dashboard: View Dashboard
         view_dashboard_description: Allows users to access the dashboard and various metrics
-        view_devops: Devops
+        view_devops: DevOps
         view_devops_description: Allows users to access Sidekiq and pgHero dashboards
       title: Roles
     rules:
@@ -732,24 +723,27 @@ en:
       empty: No server rules have been defined yet.
       title: Server rules
     settings:
-      activity_api_enabled:
-        desc_html: Counts of locally published posts, active users, and new registrations in weekly buckets
-        title: Publish aggregate statistics about user activity in the API
-      auto_follow_bootstrap_timeline_accounts:
-        desc_html: Separate multiple usernames by comma. Only local and unlocked accounts will work. Default when empty is all local admins.
-        title: Default follows for new users
-      bootstrap_timeline_accounts:
-        desc_html: Separate multiple usernames by comma. These accounts will be guaranteed to be shown in follow recommendations
-        title: Recommend these accounts to new users
-      contact_information:
-        email: Business e-mail
-        username: Contact username
-      custom_css:
-        desc_html: Modify the look with CSS loaded on every page
-        title: Custom CSS
-      default_noindex:
-        desc_html: Affects all users who have not changed this setting themselves
-        title: Opt users out of search engine indexing by default
+      about:
+        manage_rules: Manage server rules
+        preamble: Provide in-depth information about how the server is operated, moderated, funded.
+        rules_hint: There is a dedicated area for rules that your users are expected to adhere to.
+        title: About
+      appearance:
+        preamble: Customize Mastodon's web interface.
+        title: Appearance
+      branding:
+        preamble: Your server's branding differentiates it from other servers in the network. This information may be displayed across a variety of environments, such as Mastodon's web interface, native applications, in link previews on other websites and within messaging apps, and so on. For this reason, it is best to keep this information clear, short and concise.
+        title: Branding
+      content_retention:
+        preamble: Control how user-generated content is stored in Mastodon.
+        title: Content retention
+      discovery:
+        follow_recommendations: Follow recommendations
+        preamble: Surfacing interesting content is instrumental in onboarding new users who may not know anyone Mastodon. Control how various discovery features work on your server.
+        profile_directory: Profile directory
+        public_timelines: Public timelines
+        title: Discovery
+        trends: Trends
       domain_blocks:
         all: To everyone
         disabled: To no one
@@ -779,67 +773,41 @@ en:
         desc_html: Allow users to be discoverable
         title: Enable profile directory
       registrations:
-        closed_message:
-          desc_html: Displayed on frontpage when registrations are closed. You can use HTML tags
-          title: Closed registration message
-        deletion:
-          desc_html: Allow anyone to delete their account
-          title: Open account deletion
-        enable_captcha:
-          desc_html: Use captcha in registration form
-          title: Enable captcha
-        require_invite_text:
-          desc_html: When registrations require manual approval, make the “Why do you want to join?” text input mandatory rather than optional
-          title: Require new users to enter a reason to join
+        preamble: Control who can create an account on your server.
+        title: Registrations
       registrations_mode:
         modes:
           approved: Approval required for sign up
           none: Nobody can sign up
           open: Anyone can sign up
-        title: Registrations mode
-      show_known_fediverse_at_about_page:
-        desc_html: When disabled, restricts the public timeline linked from the landing page to showing only local content
-        title: Include federated content on unauthenticated public timeline page
-      site_description:
-        desc_html: Introductory paragraph on the API. Describe what makes this Mastodon server special and anything else important. You can use HTML tags, in particular <code>&lt;a&gt;</code> and <code>&lt;em&gt;</code>.
-        title: Server description
-      site_description_extended:
-        desc_html: A good place for your code of conduct, rules, guidelines and other things that set your server apart. You can use HTML tags
-        title: Custom extended information
-      site_short_description:
-        desc_html: Displayed in sidebar and meta tags. Describe what Mastodon is and what makes this server special in a single paragraph.
-        title: Short server description
-      site_terms:
-        desc_html: You can write your own privacy policy, terms of service or other legalese. You can use HTML tags
-        title: Custom terms of service
-      site_title: Server name
-      thumbnail:
-        desc_html: Used for previews via OpenGraph and API. 1200x630px recommended
-        title: Server thumbnail
-      timeline_preview:
-        desc_html: Display link to public timeline on landing page and allow API access to the public timeline without authentication
-        title: Allow unauthenticated access to public timeline
-      title: Site settings
-      trendable_by_default:
-        desc_html: Specific trending content can still be explicitly disallowed
-        title: Allow trends without prior review
-      trends:
-        desc_html: Publicly display previously reviewed content that is currently trending
-        title: Trends
+      title: Server Settings
     site_uploads:
       delete: Delete uploaded file
       destroyed_msg: Site upload successfully deleted!
     statuses:
+      account: Author
+      application: Application
       back_to_account: Back to account page
       back_to_report: Back to report page
       batch:
         remove_from_report: Remove from report
         report: Report
       deleted: Deleted
+      favourites: Favourites
+      history: Version history
+      in_reply_to: Replying to
+      language: Language
       media:
         title: Media
+      metadata: Metadata
       no_status_selected: No posts were changed as none were selected
+      open: Open post
+      original_status: Original post
+      reblogs: Reblogs
+      status_changed: Post changed
       title: Account posts
+      trending: Trending
+      visibility: Visibility
       with_media: With media
     strikes:
       actions:
@@ -879,6 +847,9 @@ en:
         description_html: These are links that are currently being shared a lot by accounts that your server sees posts from. It can help your users find out what's going on in the world. No links are displayed publicly until you approve the publisher. You can also allow or reject individual links.
         disallow: Disallow link
         disallow_provider: Disallow publisher
+        no_link_selected: No links were changed as none were selected
+        publishers:
+          no_publisher_selected: No publishers were changed as none were selected
         shared_by_over_week:
           one: Shared by one person over the last week
           other: Shared by %{count} people over the last week
@@ -898,6 +869,7 @@ en:
         description_html: These are posts that your server knows about that are currently being shared and favourited a lot at the moment. It can help your new and returning users to find more people to follow. No posts are displayed publicly until you approve the author, and the author allows their account to be suggested to others. You can also allow or reject individual posts.
         disallow: Disallow post
         disallow_account: Disallow author
+        no_status_selected: No trending posts were changed as none were selected
         not_discoverable: Author has not opted-in to being discoverable
         shared_by:
           one: Shared or favourited one time
@@ -913,6 +885,7 @@ en:
           tag_uses_measure: total uses
         description_html: These are hashtags that are currently appearing in a lot of posts that your server sees. It can help your users find out what people are talking the most about at the moment. No hashtags are displayed publicly until you approve them.
         listable: Can be suggested
+        no_tag_selected: No tags were changed as none were selected
         not_listable: Won't be suggested
         not_trendable: Won't appear under trends
         not_usable: Cannot be used
@@ -1023,7 +996,7 @@ en:
     warning: Be very careful with this data. Never share it with anyone!
     your_token: Your access token
   auth:
-    apply_for_account: Request an invite
+    apply_for_account: Request an account
     change_password: Password
     checkbox_agreement_html: I agree to the <a href="%{rules_path}" target="_blank">server rules</a> and <a href="%{terms_path}" target="_blank">terms of service</a>
     checkbox_agreement_without_rules_html: I agree to the <a href="%{terms_path}" target="_blank">terms of service</a>
@@ -1045,7 +1018,8 @@ en:
     logout: Logout
     migrate_account: Move to a different account
     migrate_account_html: If you wish to redirect this account to a different one, you can <a href="%{path}">configure it here</a>.
-    or_log_in_with: Or login with
+    or_log_in_with: Or log in with
+    privacy_policy_agreement_html: I have read and agree to the <a href="%{privacy_policy_path}" target="_blank">privacy policy</a>
     providers:
       cas: CAS
       saml: SAML
@@ -1063,13 +1037,18 @@ en:
     registration_closed: "%{instance} is not accepting new members"
     resend_confirmation: Resend confirmation instructions
     reset_password: Reset password
-    rucaptcha_invalid: Captcha input incorrect, try again!
+    rules:
+      preamble: These are set and enforced by the %{domain} moderators.
+      title: Some ground rules.
     security: Security
     set_new_password: Set new password
     setup:
       email_below_hint_html: If the below e-mail address is incorrect, you can change it here and receive a new confirmation e-mail.
       email_settings_hint_html: The confirmation e-mail was sent to %{email}. If that e-mail address is not correct, you can change it in account settings.
       title: Setup
+    sign_up:
+      preamble: With an account on this Mastodon server, you'll be able to follow any other person on the network, regardless of where their account is hosted.
+      title: Let's get you set up on %{domain}.
     status:
       account_status: Account status
       confirming: Waiting for e-mail confirmation to be completed.
@@ -1284,6 +1263,7 @@ en:
     invalid_markup: 'contains invalid HTML markup: %{error}'
   imports:
     errors:
+      invalid_csv_file: 'Invalid CSV file. Error: %{error}'
       over_rows_processing_limit: contains more than %{count} rows
     modes:
       merge: Merge
@@ -1379,6 +1359,8 @@ en:
     carry_blocks_over_text: This user moved from %{acct}, which you had blocked.
     carry_mutes_over_text: This user moved from %{acct}, which you had muted.
     copy_account_note_text: 'This user moved from %{acct}, here were your previous notes about them:'
+  navigation:
+    toggle_menu: Toggle menu
   notification_mailer:
     admin:
       report:
@@ -1457,6 +1439,8 @@ en:
     other: Other
     posting_defaults: Posting defaults
     public_timelines: Public timelines
+  privacy_policy:
+    title: Privacy Policy
   reactions:
     errors:
       limit_reached: Limit of different reactions reached
@@ -1512,7 +1496,7 @@ en:
     browser: Browser
     browsers:
       alipay: Alipay
-      blackberry: Blackberry
+      blackberry: BlackBerry
       chrome: Chrome
       edge: Microsoft Edge
       electron: Electron
@@ -1526,7 +1510,7 @@ en:
       phantom_js: PhantomJS
       qq: QQ Browser
       safari: Safari
-      uc_browser: UCBrowser
+      uc_browser: UC Browser
       weibo: Weibo
     current_session: Current session
     description: "%{browser} on %{platform}"
@@ -1535,8 +1519,8 @@ en:
     platforms:
       adobe_air: Adobe Air
       android: Android
-      blackberry: Blackberry
-      chrome_os: Chrome OS
+      blackberry: BlackBerry
+      chrome_os: ChromeOS
       firefox_os: Firefox OS
       ios: iOS
       linux: Linux
@@ -1756,26 +1740,7 @@ en:
   themes:
     bilibili-light: Bilibili
     contrast: Mastodon (High contrast)
-    cybre-light: Cybre Light
-    dark-blue: Mastodon (Dark-Blue)
-    dark-cyan: Mastodon (Dark-Cyan)
-    dark-green: Mastodon (Dark-Green)
-    dark-orange: Mastodon (Dark-Orange)
-    dark-pink: Mastodon (Dark-Pink)
-    dark-purple: Mastodon (Dark-Purple)
-    dark-red: Mastodon (Dark-Red)
-    dark-yellow: Mastodon (Dark-Yellow)
-    default: Mastodon (Default)
-    forest: Forest
-    light-blue: Mastodon (Light-Blue)
-    light-cyan: Mastodon (Light-Cyan)
-    light-green: Mastodon (Light-Green)
-    light-orange: Mastodon (Light-Orange)
-    light-pink: Mastodon (Light-Pink)
-    light-purple: Mastodon (Light-Purple)
-    light-red: Mastodon (Light-Red)
-    light-yellow: Mastodon (Light-Yellow)
-    luxury: Luxury
+    default: Mastodon (Dark)
     mastodon-light: Mastodon (Light)
     new-year: New Year
     nga: NGA Style
@@ -1863,10 +1828,10 @@ en:
         suspend: Account suspended
     welcome:
       edit_profile_action: Setup profile
-      edit_profile_step: You can customize your profile by uploading an avatar, header, changing your display name and more. If you’d like to review new followers before they’re allowed to follow you, you can lock your account.
+      edit_profile_step: You can customize your profile by uploading a profile picture, changing your display name and more. You can opt-in to review new followers before they’re allowed to follow you.
       explanation: Here are some tips to get you started
       final_action: Start posting
-      final_step: 'Start posting! Even without followers your public posts may be seen by others, for example on the local timeline and in hashtags. You may want to introduce yourself on the #introductions hashtag.'
+      final_step: 'Start posting! Even without followers, your public posts may be seen by others, for example on the local timeline or in hashtags. You may want to introduce yourself on the #introductions hashtag.'
       full_handle: Your full handle
       full_handle_hint: This is what you would tell your friends so they can message or follow you from another server.
       random_password: Your temporary password
