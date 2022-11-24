@@ -248,7 +248,13 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
   deployPictureInPicture (status, type, mediaProps) {
     dispatch(deployPictureInPicture(status.get('id'), status.getIn(['account', 'id']), type, mediaProps));
   },
-
+    onInteractionModal (type, status) {
+    dispatch(openModal('INTERACTION', {
+      type,
+      accountId: status.getIn(['account', 'id']),
+      url: status.get('url'),
+    }));
+  },
   onQuoteToggleCollapsed (status, isCollapsed) {
     // dispatch(toggleStatusCollapse(status.get('id'), isCollapsed));
     // no difference or should also pass the parent id

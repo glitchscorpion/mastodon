@@ -33,6 +33,10 @@ export const REDRAFT = 'REDRAFT';
 export const STATUS_FETCH_SOURCE_REQUEST = 'STATUS_FETCH_SOURCE_REQUEST';
 export const STATUS_FETCH_SOURCE_SUCCESS = 'STATUS_FETCH_SOURCE_SUCCESS';
 export const STATUS_FETCH_SOURCE_FAIL    = 'STATUS_FETCH_SOURCE_FAIL';
+export const STATUS_TRANSLATE_REQUEST = 'STATUS_TRANSLATE_REQUEST';
+export const STATUS_TRANSLATE_SUCCESS = 'STATUS_TRANSLATE_SUCCESS';
+export const STATUS_TRANSLATE_FAIL    = 'STATUS_TRANSLATE_FAIL';
+export const STATUS_TRANSLATE_UNDO    = 'STATUS_TRANSLATE_UNDO';
 
 export const QUOTE_REVEAL = 'QUOTE_REVEAL';
 export const QUOTE_HIDE   = 'QUOTE_HIDE';
@@ -314,7 +318,39 @@ export function toggleStatusCollapse(id, isCollapsed) {
     id,
     isCollapsed,
   };
-}
+};
+
+export const translateStatus = id => (dispatch, getState) => {
+  dispatch(translateStatusRequest(id));
+
+  api(getState).post(`/api/v1/statuses/${id}/translate`).then(response => {
+    dispatch(translateStatusSuccess(id, response.data));
+  }).catch(error => {
+    dispatch(translateStatusFail(id, error));
+  });
+};
+
+export const translateStatusRequest = id => ({
+  type: STATUS_TRANSLATE_REQUEST,
+  id,
+});
+
+export const translateStatusSuccess = (id, translation) => ({
+  type: STATUS_TRANSLATE_SUCCESS,
+  id,
+  translation,
+});
+
+export const translateStatusFail = (id, error) => ({
+  type: STATUS_TRANSLATE_FAIL,
+  id,
+  error,
+});
+
+export const undoStatusTranslation = id => ({
+  type: STATUS_TRANSLATE_UNDO,
+  id,
+});
 
 export function toggleQuoteStatusCollapse(id, isCollapsed) {
   return {

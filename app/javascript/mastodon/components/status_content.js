@@ -223,7 +223,7 @@ export default class StatusContent extends React.PureComponent {
       let mentionsPlaceholder = '';
 
       const mentionLinks = status.get('mentions').map(item => (
-        <Permalink to={`/@${item.get('acct')}`} href={item.get('url')} key={item.get('id')} className='mention'>
+        <Link to={`/@${item.get('acct')}`} key={item.get('id')} className='status-link mention'>
           @<span>{item.get('username')}</span>
         </Permalink>
       )).reduce((aggregate, item) => [...aggregate, item, ' '], []);

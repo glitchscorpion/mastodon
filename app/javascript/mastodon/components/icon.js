@@ -28,7 +28,7 @@ export default class Icon extends React.PureComponent {
     }
 
     return (
-      <i role='img' className={classNames(fa, `fa-${tag}`, className, { 'fa-fw': fixedWidth })} {...other} />
+      <i className={classNames('fa', `fa-${id}`, className, { 'fa-fw': fixedWidth })} {...other} />
     );
   }
 
